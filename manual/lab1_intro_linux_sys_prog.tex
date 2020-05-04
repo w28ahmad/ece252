@@ -1,11 +1,11 @@
 \chapter{Introduction to Systems Programming in Linux Computing Environment}
 \section{Introduction}
 \subsection{Objectives}
-This lab is to introduce system programming in a general Linux Development Environment at ECE Department. After finishing this lab, students will be able to
+The purpose of this lab is to introduce system programming in a Linux development environment. After finishing this lab, students will be able to
 \begin{itemize}
-   \item apply basic Linux commands to interact with the Linux system through shell;
-   \item apply standard Linux C programming tools for system programming and
-   \item create a program to interact with Linux file systems by applying the relevant system and libray calls.
+   \item use basic Linux commands to interact with the system through the shell
+   \item use standard Linux C programming tools for system programming
+   \item create a program to interact with the Linux file system using the relevant system and library calls.
 \end{itemize}
 
 \subsection{Topics}
@@ -13,90 +13,85 @@ Concretely, the lab will cover the following topics:
 \begin{itemize}
   %\item how to connect to a remote Linux server;
   \item Basic Linux commands
-  \item C programming toolchain including \verb+gcc+, \verb+make+, and \verb+ddd+
+  \item The C programming toolchain including \verb+gcc+, \verb+make+, and \verb+ddd+
   \item Linux manual pages
-  \item Linux system calls and file I/O library calls to traverse a directory and perform read/write operations on selected files.
+  \item Linux system calls and file I/O library calls to traverse a directory and perform read/write operations on binary files.
   \end{itemize}
   
 \section{Starter Files}
 
-The starter files are on GitHub at url: \url{http://github.com/broehl/ece252/tree/master/lab1/starter}.
-It contains the following sub-directories where we have example code and image files to help you get started:
+The starter files are on GitHub at url: \url{http://github.com/broehl/ece252/}in the lab1/starter directory, which ontains the following sub-directories where we have example code and image files to help you get started:
 \begin{itemize}
-    \item the \href{http://github.com/yqh/ece252/tree/master/lab1/starter/cmd_arg}{cmd\_arg} demonstrates how to capture command line input arguments;
-    \item the \href{http://github.com/yqh/ece252/tree/master/lab1/starter/images}{images} contains some image files;
-    \item the \href{http://github.com/yqh/ece252/tree/master/lab1/starter/ls}{ls} demonstrates how to list all files under a directory and obtain file types;
-    \item the \href{http://github.com/yqh/ece252/tree/master/lab1/starter/png_util}{png\_util} provides a set of utility functions to process a PNG image file;
-    \item the \href{http://github.com/yqh/ece252/tree/master/lab1/starter/pointer}{pointer} demonstrates how to use pointers to access a C structure; and
-    \item the \href{http://github.com/yqh/ece252/tree/master/lab1/starter/segfault}{segfault} contains a broken program that has a segmentation fault bug, which you will debug in the last Pre-lab exercise.
+    \item {cmd\_arg} demonstrates how to capture command line input arguments
+    \item {images} contains some image files
+    \item {ls} demonstrates how to list all files under a directory and obtain file types
+    \item {png\_util} provides a set of utility functions to process a PNG image file
+    \item {pointer} demonstrates how to use pointers to access a C structure
+    \item {segfault} contains a broken program that has a segmentation fault bug, which you will debug in the last pre-lab exercise.
 \end{itemize}
-Using the code in the starter files is permitted and will not be considered as plagiarism.
+Using the code in the starter files is permitted (and encouragd) and will not be considered as plagiarism.
 
 \section{Pre-lab Preparation}
 
 %Read Chapter \ref{ch_linux_env}. 
-Read the Introduction to ECE Linux Programming Environment supplementary material in Part \ref{part_ref} Chapter \ref{ch_linux_env}. Do the pre-lab exercises in Section \ref{sec_ex1}. Finish the pre-lab programming assignment before your scheduled lab starts (see \ref{sec:lab1_prelab_assignment}).
+Read the Introduction to the ECE Linux Programming Environment supplementary material in Part \ref{part_ref} Chapter \ref{ch_linux_env} which is found later in this lab manual. Do the pre-lab exercises in Section \ref{sec_ex1}. Finish the pre-lab programming assignment before your scheduled lab starts (see \ref{sec:lab1_prelab_assignment}).
 \subsection{Basic Linux Commands Exercises}
 \label{sec_ex1}
 
 These pre-lab exercises are to practice some basic commands on Linux. 
 \begin{enumerate}
-    \item Use the MobaXterm to login onto
-      \code{eceubuntu.uwaterloo.ca}. You are now inside the Linux shell and in your home directory. The home directory usually has a path name in the format of \verb+/home/username+, where username normally is your UWID. For example, a user with UWID of \verb+jsmith+ has a home directory of \verb+/home/jsmith+.
-    \item Use the \code{pwd} command to print the full filename of the current working directory. You should see your home directory name printed on the screen. For example: \verb+/home/jsmith+.
+    \item Use MobaXterm to login onto
+      \code{eceubuntu.uwaterloo.ca}. You are now inside the Linux shell and in your home directory. The home directory usually has a path name in the form \verb+/home/username+, where username is your UWID. For example, a user with UWID of \verb+jsmith+ has a home directory of \verb+/home/jsmith+.
+    \item Use the \code{pwd} command to print the full pathname of the current working directory. You should see your home directory name printed on the screen. For example: \verb+/home/jsmith+.
     \item Use the \code{echo \$HOME} command to print your home directory path name. You will notice that the output matches the \verb+pwd+ output of exercise 2.
     \item Use the \code{env} command to list all the environment variables and their values. Note that \verb+HOME+ is one of the many environment variables.
-    \item One important environment variable is \verb+PATH+. It specifies a set of directories the system searches for executible programs. Use \code{echo \$PATH} to see your \verb+PATH+ environment variable setting.
-    \item Execute command \code{which ls} to locate the directory the ls command is in. You will notice the directory is listed in \verb+PATH+ environment variable. When you issue a command and get an error message of ``command not found'', it means the command cannot be found after searching all the directories listed in \verb+PATH+ environment variable. A commonly seen error is that a command in your current working directory gives you ``command not found`` error. This is normally due to the fact that the current working directory \verb+.+ or \verb+./+ is not in the PATH. Consequently you need to add the path to the command name for the system to know where the command is. For example \code{./a.out} tells the system to run the command \verb+a.out+ located in the current working directory. 
-    \item Use the \code{ls} command to list all files in your current working
-          directory. 
-    \item Read the online manual of the \verb+ls+ command by issuing 
+    \item One important environment variable is \verb+PATH+, which specifies a set of directories that the system searches for executable programs. Use \code{echo \$PATH} to see your \verb+PATH+ environment variable setting.
+    \item Execute the command \code{which ls} to locate the directory the ls command is in. You will notice the directory is listed in the \verb+PATH+ environment variable. When you issue a command and get an error message of ``command not found'', it means the command cannot be found after searching all the directories listed in the \verb+PATH+ environment variable. A commonly seen error is that a command in your current working directory gives you ``command not found`` error. This is normally due to the fact that the current working directory \verb+.+ or \verb+./+ is not in the PATH. Consequently you need to add the path to the command name for the system to know where the command is. For example \code{./a.out} tells the system to run the command \verb+a.out+ located in the current working directory. 
+    \item Use the \code{ls} command to list all the files and directories in your current working directory. 
+    \item Read the online manual of the \verb+ls+ command by issuing the
       \code{man ls} command to the shell.
-      Find out from the manual what options \verb+-l+, \verb+-a+ and \verb+-la+ do.
+      Find out from the manual what the options \verb+-l+, \verb+-a+ and \verb+-la+ do.
       Execute  the \verb+ls+ command with these three options and see the execution results.
-    \item Create a directory as the work space of labs under your home directory. 
-          Name the newly created directory as \verb+labs+.
+    \item Create a directory called ECE252 under your home directory. You will use this for all your labs related to this course.
           Read the man page of the command \verb+mkdir+ to see how to do it.
-    \item Change directory to the newly create directory of \verb+labs+.
+    \item Change directory to the newly create directory of \verb+ECE252+.
           Read the man page of command \verb+cd+ to find out how to change directory.
     \item Clone the ece252 lab repository by using the command: \\
-      \code{git clone https://github.com/yqh/ece252.git}.
+      \code{git clone https://github.com/broehl/ece252.git}.
 
-      A new directory named \verb+ece252+ will be created. It has lab manual and starter code of ECE252 labs. 
-    \item Read the man page of the \verb+find+ command by issuing   
-      \code{man find} command to the shell. Read what the \verb+-name+ option does. Use \verb+find+ with the \verb+-name+ option to find all the files with .png file extension in the \verb+$HOME/labs/ece252+ directory.
-    \item Change directory to where the \verb+WEEF_1.png+ is. Use \code{file WEEF\_1.png} command to obtain the file type and image properties such as dimensions and bit depth.
-    \item Use \verb+file+ command to obtain the file type information of \verb+Disguise.png+. You should see that this is not an image file though the file exension is .png.  Use a text editor to open the file and see the contents. This exercise is to show you that the \verb+file+ command does not obtain the file type information based on the file extension. It looks into the contents of file to extract the file type information
-      %REV%\footnote{A file has a magic number to indicate its type. The magic number is a sequence of bytes usually appearing near the beginning of the file. The file command checks the magic number. The PNG file's magic number is 89 50 4E 47 OD 0A 1A 0A in hexadecimal format. It is interesting to notice that the second, third and fourth characters are P N and G in ASCII.}.
-      \footnote{A file has a magic number to indicate its type. The magic number is a sequence of bytes usually appearing near the beginning of the file. The file command checks the magic number. The PNG file's magic number is 89 50 4E 47 in hexadecimal, which is .PNG in ASCII.}.
+      A new directory named \verb+ece252+ will be created. It has the TeX source cod for the lab manual and the starter code for each of the five labs. 
+    \item Read the man page of the \verb+find+ command by issuing the
+      \code{man find} command to the shell. Read what the \verb+-name+ option does. Use \verb+find+ with the \verb+-name+ option to find all the files with a ".png" file extension in the \verb+$HOME/ECE252/ece252+ directory.
+    \item Change directory to where the file \verb+WEEF_1.png+ is. Use the \code{file WEEF\_1.png} command to obtain the file type and image properties such as dimensions and bit depth.
+    \item Use the \verb+file+ command to obtain the file type information of \verb+Disguise.png+. You should see that this is not an image file, even though the file exension is .png.  Use a text editor to open the file and see the contents. This exercise is to show you that the \verb+file+ command does not obtain the file type information based on the file extension. It looks at the contents of that file to extract the file type information.
     \item You can use the command \verb+display+ to display an image. For example, to view the \verb+WEEF_1.png+ file, use the command \verb+display WEEF_1.png+. 
-    \item Execute \code{cat red-green-16x16.png} command and you will notice the output are gibberish funny characters. This is because cat displays plain text file in a human readable form, not a binary file. The PNG image file is a binary file. Both vi and emacs have hexadecimal mode which displays the bytes in binary files in a hexadecimal format. They are pretty good for small size binary files. There are also few linux commands that perform hex dump of a file. The \verb+xxd+ is one of them. Try \code{xxd red-green-16x16.png} and see the output. Other similar commands include \verb+od+ and \verb+hexdump+. Refer to the man pages of these commands for detailed usage instructions. 
-    \item The \verb+pngcheck+ command test PNG image files for corruption. Some image viewers are able to display the image even part of the data are corrupted. An image can be opened by an image viewer does not guarantee it is not corrupted. You will notice that the \verb+display+ command will not display a corrupted PNG image file on Linux. But the same corrupted image file most likely can be displayed by Windows Paint program. Execute the following two commands and see what pngcheck output tells you.
+    \item Execute the \code{cat red-green-16x16.png} command and you will notice the output are gibberish. This is because cat displays a plain text file in a human readable form, not a binary file. The PNG image file is a binary file. Both vi and emacs have a hexadecimal mode which displays the bytes in binary files in a hexadecimal format. They are pretty good for small size binary files. There are also few Linux commands that perform hex dump of a file. One of them is called \verb+xxd+. Try \code{xxd red-green-16x16.png} and see the output. Other similar commands include \verb+od+ and \verb+hexdump+. Refer to the man pages of these commands for detailed usage instructions. 
+    \item The \verb+pngcheck+ command tests PNG image files for corruption. Some image viewers are able to display an image even part of it is corrupted. The fact that an image can be opened by an image viewer does not guarantee it is not corrupted. You will notice that the \verb+display+ command will not display a corrupted PNG image file on Linux. But the same corrupted image file most likely can be displayed by the Windows Paint program. Execute the following two commands and see what the pngcheck output tells you.
       \begin{itemize}
       \item \code{pngcheck red-green-16x16.png}
       \item \code{pngcheck red-green-16x16-corrupted.png}
       \end{itemize}
-    \item Images are binary files. To compare two binary files, we can use the \verb+cmp+ command. Read the man page of the \verb+cmp+ command and especially pay attention to the \verb+-l+ option. Use the \verb+cmp+ command with the \verb+-l+ option to find out which bytes in \verb+red-green-16x16.png+ and \verb+red-green-16x16-corrupted.png+ are different. Another tool is \verb+vbindiff+, which displays and compares hexadecimal file(s).  
-     \item Use gdb or ddd to run the program under \url{http://github.com/yqh/ece252/tree/master/lab1/starter/segfault} directory of the starter code. When the code generates a segmentation fault inside the debugger, run the gdb command \code{where} to see the stack trace and fix the segmentation fault problem of the code. 
+    \item Images are binary files. To compare two binary files, we can use the \verb+cmp+ command. Read the man page of the \verb+cmp+ command and especially pay attention to the \verb+-l+ option. Use the \verb+cmp+ command with the \verb+-l+ option to find out which bytes in \verb+red-green-16x16.png+ and \verb+red-green-16x16-corrupted.png+ are different. Another tool is \verb+vbindiff+, which displays and compares binary file(s).  
+     \item Use gdb or ddd to run the program under in the lab1/starter/segfault directory of the starter code. When the code generates a segmentation fault inside the debugger, run the gdb command \code{where} to see the stack trace and fix the segmentation fault problem of the code. 
 \end{enumerate}
 
 \subsection{Pre-lab Assignment}
 \label{sec:lab1_prelab_assignment}
-We will write some small pieces of code that can be used in the final lab assignment code. We will create a command line program named \verb+pnginfo+ that prints the dimensions of a valid PNG image file and an error message to the standard output if the input file is not a PNG file or is a corrupted PNG file. The command takes one input argument, which is the path name of a file. Both absolute path name and relative path name are accepted. For example, command \code{./pnginfo WEEF\_1.png} will output the following line: 
+We will write some small pieces of code that can be used in the final lab assignment code. We will create a command line program named \verb+pnginfo+ that prints the dimensions of a valid PNG image file or an error message to the standard output if the input file is not a PNG file or is a corrupted PNG file. The command takes one input argument, which is the path name of a file. Both absolute pathname and relative path name are accepted. For example, command \code{./pnginfo WEEF\_1.png} will output the following line: 
 \begin{verbatim}
 WEEF_1.png: 450 x 229 
 \end{verbatim}
-If the input file is not a PNG file. Then output an error message. For example, command \code{./pnginfo Disguise.png} will output the following line:
+If the input file is not a PNG file. Then output an error message. For example, the command \code{./pnginfo Disguise.png} will output the following line:
 \begin{verbatim}
 Disguise.png: Not a PNG file 
 \end{verbatim}
-If the input file is a PNG file, but certain chunks has CRC error. That is the CRC value in the chunk does not match the CRC value computed by your program, then the program output something similar as what pngcheck does. For example, command \code{./pnginfo red-green-16x16-corrupted.png} will output the following line:
+If the input file is a PNG file, but certain chunks have CRC errors (that is, the CRC value in the chunk does not match the CRC value computed by your program), then the program outputs something similar as what pngcheck does. For example, the command \code{./pnginfo red-green-16x16-corrupted.png} will output the following line:
 \begin{verbatim}
 red-green-16x16-corrupted.png: 16 x 16 
 IDAT chunk CRC error: computed 34324f1e, expected dc5f7b84
 \end{verbatim}
 
-You will find starter files under \href{http://github.com/yqh/ece252/tree/master/lab1/starter/png_util}{png\_util} directory are helpful. To make our pre-lab code reusable in the final lab, we will create two functions. One is \verb+is_png()+ which takes eight bytes and check whether they match the PNG image file signature. Another function is \verb+get_data_IHDR()+ which extracts the image meta information including height and width from a PNG file IHDR chunk. You are free to design the signatures of these two functions so that they will be re-used in your lab1 final solution and future labs 2 and 3 solutions\footnote{lab2 and lab3 are based on the code of lab1}. However in \verb+lab_png.h+ you will find some existing function prototypes that we put there to show one possible function prototype design. Feel free to modify these function prototypes to fit your own design. For computing the CRC of a sequence of bytes, the starter file already provides the crc.c and crc.h and the main.c that demos how to call the crc function to do the computation.
+You will find the starter files in the png\_util directory are helpful. To make our pre-lab code reusable in the final lab, you should create two functions. One is \verb+is_png()+, which takes eight bytes and check whether they match the PNG image file signature. The other function is \verb+get_data_IHDR()+, which extracts the image meta information including height and width from a PNG file IHDR chunk. You are free to design the signatures of these two functions so that they can be re-used in your lab1 final solution and future labs 2 and 3 solutions\footnote{lab2 and lab3 are based on the code of lab1}. However in \verb+lab_png.h+ you will find some existing function prototypes that we put there to show one possible function prototype design. Feel free to modify these function prototypes to fit your own design. For computing the CRC of a sequence of bytes, the starter code provides the files crc.c and crc.h along with a main.c file that demonstrates how to call the crc function to do the computation.
 \section{Lab Assignment}
 \subsection{Problem statement}
 
