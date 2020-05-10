@@ -5,7 +5,7 @@ The purpose of this lab is to design and implement a multi-threaded web crawler.
 
 However we still need to avoid race conditions in the memory region that threads are sharing. Aside from mutex and semaphore, the operating system also provides condition variable and atomic type facilities. 
 
-After this lab, students will be able to
+After this lab, you will be able to
 \begin{itemize}
 \item design and implement a multi-threaded concurrent program that requires more than one synchronization pattern
 \item gain more experience in the Linux mutex, semaphore, condition variable and atomic type facilities to synchronize threads
@@ -17,7 +17,7 @@ The starter files are on GitHub, in the lab4/starter directory. That directory c
 \begin{itemize}
 %\item \verb+cURL\_header+ has example code to show how to use curl header call back function to display all the http response headers
 %\item \verb+parser+ has example code for parsing an html file and extracting http links
-\item \verb+curl\_xml+ has example code to show how to use curl and libxml2 together to identify a possible png page and extract http and https links from an html page
+\item \verb+curl_xml+ has example code to show how to use curl and libxml2 together to identify a possible png page and extract http and https links from an html page
 \item \verb+tools+ has a shell script to compute statistics from timing data.
 \end{itemize}
 The file lab4\_eceubunt1.csv is the template that you will need for submitting timing results (see Section \ref{sec:lab4:postlab}).
@@ -154,10 +154,10 @@ Put the following items under a directory named lab4:
 \begin{enumerate}
 \item All the source code and a Makefile. The Makefile default target is the \verb+findpng2+ executable file. That is, the command \verb+make+ should generate the \verb+findpng2+ executable file. We also expect that the command \verb+make clean+ will remove the object code and the default target. That is, the \verb+.o+ files and the executable file should be removed.
 \item A timing result .csv file named lab4\_hostname.csv 
-  which contains the timing results by running the findpng2 on a server whose name is hostname. For example, \verb+lab4_eceubuntu1.csv+ means findpng2 was executed on the server eceubuntu1 and the file contains the timing results.
+  which contains the timing results by running the \verb+findpng2+ command on a server whose name is hostname. For example, \verb+lab4_eceubuntu1.csv+ means findpng2 was executed on the server eceubuntu1 and the file contains the timing results.
   The first line of the file is the header of the timing result table. The rest of the rows are the command line argument values and the timing results. The columns of the .csv file from left to right are the values of $T$ (the number of threads), $M$ (the number of unique PNG links to search for) and $TIME$ (the corresponding findpng2 average execution time). We have an example .csv file in the starter code folder named \verb+lab4_eceubuntu1.csv+ for illustration purposes.
 
-Run your findpng2 on eceubuntu1. Record the average timing measurement data for the $(T, M)$ values shown in Table \ref{tb_timing_lab4} for a particular host. Note that for each given $(T, M)$ value in the table, you need to run the program $n$ times and compute the average time. We recommend $n=5$.
+Run your \verb+findpng2+ command on eceubuntu1. Record the average timing data for the $(T, M)$ values shown in Table \ref{tb_timing_lab4} for a particular host. Note that for each given $(T, M)$ value in the table, you need to run the program $n$ times and compute the average time. We recommend $n=5$.
 \begin{table}[h]
 \begin{center}
 \begin{tabular}{|c|c|c|}

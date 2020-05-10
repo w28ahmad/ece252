@@ -1,7 +1,7 @@
-\chapter{Introduction to Systems Programming in the Linux Computing Environment}
+\chapter{Introduction to System Programming in the Linux Computing Environment}
 \section{Introduction}
 \subsection{Objectives}
-The purpose of this lab is to introduce system programming in a Linux development environment. After finishing this lab, students will be able to
+The purpose of this lab is to introduce system programming in a Linux development environment. After finishing this lab, you will be able to
 \begin{itemize}
    \item use basic Linux commands to interact with the system through the shell
    \item use standard Linux C programming tools for system programming
@@ -20,11 +20,11 @@ Concretely, the lab will cover the following topics:
   
 \section{Starter Files}
 
-The starter files are on GitHub at url: \url{http://github.com/broehl/ece252/}in the lab1/starter directory, which ontains the following sub-directories where we have example code and image files to help you get started:
+The starter files are on GitHub at \url{http://github.com/broehl/ece252/}in the lab1/starter directory, which contains the following sub-directories where we have example code and image files to help you get started:
 \begin{itemize}
-    \item \verb+cmd\_arg+ demonstrates how to capture command line input arguments
+    \item \verb+cmd_arg+ demonstrates how to capture command line input arguments
     \item \verb+ls+ demonstrates how to list all files under a directory and obtain file types
-    \item \verb+png\_util+ provides a set of utility functions to process a PNG image file
+    \item \verb+png_util+ provides a set of utility functions to process a PNG image file
     \item \verb+pointer+ demonstrates how to use pointers to access a C structure
     \item \verb+images+ contains some image files
     \item \verb+segfault+ contains a broken program that has a segmentation fault bug, which you will debug in the last pre-lab exercise.
@@ -88,7 +88,7 @@ red-green-16x16-corrupted.png: 16 x 16
 IDAT chunk CRC error: computed 34324f1e, expected dc5f7b84
 \end{verbatim}
 
-You will find the starter files in the png\_util directory are helpful. To make our pre-lab code reusable in the final lab, you should create two functions. One is \verb+is_png()+, which takes eight bytes and checks whether they match the PNG image file signature. The other function is \verb+get_data_IHDR()+, which extracts the image meta information including height and width from a PNG file IHDR chunk. You are free to design the signatures of these two functions so that they can be re-used in your lab1 final solution and future lab 2 and lab 3 solutions\footnote{lab2 and lab3 are based on the code of lab1}. However in \verb+lab_png.h+ you will find some existing function prototypes that we put there to show one possible function prototype design. Feel free to modify these function prototypes to fit your own design. For computing the CRC of a sequence of bytes, the starter code provides the files crc.c and crc.h along with a main.c file that demonstrates how to call the crc function to do the computation.
+You will find the starter files in the png\_util directory are helpful. To make your pre-lab code reusable in the final lab, you should create two functions. One is \verb+is_png()+, which takes eight bytes and checks whether they match the PNG image file signature. The other function is \verb+get_data_IHDR()+, which extracts the image meta information including height and width from a PNG file IHDR chunk. You are free to design the signatures of these two functions so that they can be re-used in your lab1 final solution and future lab 2 and lab 3 solutions\footnote{lab2 and lab3 are based on the code of lab1}. However in \verb+lab_png.h+ you will find some existing function prototypes that we put there to show one possible function prototype design. Feel free to modify these function prototypes to fit your own design. For computing the CRC of a sequence of bytes, the starter code provides the files crc.c and crc.h along with a main.c file that demonstrates how to call the crc function to do the computation.
 \section{Lab Assignment}
 \subsection{Problem statement}
 
@@ -100,7 +100,7 @@ You will find the starter files in the png\_util directory are helpful. To make 
 
 You are given a directory under which some files are PNG images and some files are not. The directory may contain nested sub-directories\footnote{A nested sub-directory is a sub-directory that may contain many layers of sub-directories.}. All valid PNG images under the given directory are horizontal strips of a bigger image. They all have the same width. The height of each image might be different. The PNG images have the naming convention of \verb+*_N.png+, where \verb+N+ is the image strip sequence number and \verb+N=0, 1, 2, ...+. However a file with a .png or .PNG extension may not be a real PNG image file. You need to locate all the real PNG image files under the given directory first. Then you will concatenate these horizontal image strips sequentially based on the sequence number in the file name to restore the original image. The sequence number indicates the position that the image should be placed in, from top to bottom. For example, the file \verb+img_1.png+ is the first horizontal strip and \verb+img_2.png+ is the second horizontal strip. To concatenate these two strips, the pixel data in the file \verb+img_1.png+ should be followed immediately by the pixel data in the file \verb+img_2.png+. Figure \ref{fig_img_concatenation} illustrates the concatenation order.
 
-To solve the problem, first you will create a tool named \verb+findpng+ to search the given directory hierarchy to find all the real PNG files under it. Second, you will create an image data concatenation tool named \verb+catpng+ to concatenate the pixel data of a set of PNG files to form a single PNG image file. The \verb+catpng+ command only processes PNG images of the same width.
+To solve the problem, first you will create a tool named \verb+findpng+ to search a given directory hierarchy to find all the real PNG files under it. Second, you will create an image data concatenation tool named \verb+catpng+ to concatenate the pixel data of a set of PNG files to form a single PNG image file. The \verb+catpng+ command only processes PNG images of the same width.
 \subsection{The findpng command}
 The expected behaviour of the \verb+findpng+ command is given in the following "manual page".
 \subsubsection{Man page of findpng}
@@ -118,7 +118,7 @@ The expected behaviour of the \verb+findpng+ command is given in the following "
 \end{itemize}
 \subsubsection*{OUTPUT FORMAT}
 \begin{itemize}
-	\item[]The output of search results is a list of relative pathnames\footnote{i.e. relative to the directory pathname on the command line} of the PNG files, one file pathname per line. The order of listing the search results is not specified. If the search result is empty, then output ``findpng: No PNG file found''.
+	\item[]The output of search results is a list of relative pathnames\footnote{i.e. relative to the directory pathname on the command line} of the PNG files, one pathname per line. The order of listing the search results is not specified. If the search result is empty, then output ``findpng: No PNG file found''.
 \end{itemize}
 \subsubsection*{EXAMPLES}
 \begin{itemize}
@@ -183,9 +183,9 @@ catpng ./img1.png ./png/img2.png
 \end{itemize}
 
 \subsubsection{File I/O}
-There are two sets of functions for file I/O operations under Linux. At the system call level, we have the {\em unbufferred I/O} functions: \code{open}, \code{read}, \code{write}, \code{lseek} and \code{close}. At the library call level, we have the standard I/O functions: \code{fopen}, \code{fread}, \code{fwrite}, \code{fseek} and \code{fclose}. The library is built on top of unbufferred I/O functions. It handles details such as buffer allocation and performing I/O in optimal sized chunks to minimize the number of \code{read} and \code{write} calls, so they're recommended for use in this lab.
+There are two sets of functions for file I/O operations under Linux. At the system call level, we have the {\em unbufferred I/O} functions: \code{open}, \code{read}, \code{write}, \code{lseek} and \code{close}. At the library call level, we have the standard I/O functions: \code{fopen}, \code{fread}, \code{fwrite}, \code{fseek} and \code{fclose}. The library is built on top of unbufferred I/O functions. It handles details such as buffer allocation and performing I/O in optimal sized chunks to minimize the number of \code{read} and \code{write} calls, so they're the ones we recommend you use in this lab.
 
-The \code{fopen} function returns a FILE pointer given a file name and mode. A PNG image file is a binary file, hence when you call \code{fopen}, use mode "\code{rb}" for reading and "\code{wb+}" for reading and writing, where the "b" indicates it is a binary file that we are opening. Read the man page of \code{fopen} for more mode options. 
+The \code{fopen} function returns a FILE pointer given a file name and mode. A PNG image file is a binary file, hence when you call \code{fopen}, use mode \code{"rb"} for reading and \code{"wb+"} for reading and writing, where the "b" indicates it is a binary file that we are opening. Read the man page of \code{fopen} for more mode options. 
 
 After the file is opened, use \code{fread} to read some number of bytes from the stream pointed to by the FILE pointer returned by \code{fopen}. Each opened file has an internal state that includes a file position indicator. The file position indicator is set to the beginning of the file when it is opened. The \code{fread} function will advance the file position indicator by the number of bytes that have been read from the file. The \code{fseek} function sets the file position indicator to the user-specified location. The \code{fwrite} function writes a user-specified number of bytes to the stream pointed to by the FILE pointer. The file position indicator also advances by the number of bytes that have been written. It is important to call \code{fclose} to close the file stream when I/O operations are finished. Failure to do so may result in incomplete files.  
 
@@ -212,12 +212,12 @@ unsigned integers (ranging from 0 to 255) that specify the red, green, blue and 
 
 PNG stands for ``Portable Network Graphics''. PNG is a file format for storing, transmitting and displaying images\cite{Roelofs1999PNG}. A PNG file is a binary file. It starts with an 8-byte header followed by a series of chunks. You will notice the second, third and fourth bytes are the ASCII codes for 'P', 'N' and 'G' respectively (see Figure \ref{fig_png_file_format}).
 
-The first chunk is the IHDR chunk, which contains meta information about the image such as the dimensions in pixels. The last chunk is always the IEND chunk, which marks the end of the image data stream. In between there is at least one IDAT chunk which contains the compressed, filtered pixel array of the image. There are other types of chunks that may appear between the IHDR chunk and the IEND chunk. For all the PNG files we are dealing with in this assignment, there will only be on IHDR chunk, one IDAT chunk and one IEND chunk (see Figure \ref{fig_png_file_format}).
+The first chunk is the IHDR chunk, which contains meta information about the image such as the dimensions in pixels. The last chunk is always the IEND chunk, which marks the end of the image data stream. In between there is at least one IDAT chunk which contains the compressed, filtered pixel array of the image. There are other types of chunks that may appear between the IHDR chunk and the IEND chunk. For all the PNG files we are dealing with in this assignment, there will only be one IHDR chunk, one IDAT chunk and one IEND chunk (see Figure \ref{fig_png_file_format}).
 
 
 Each chunk consists of four parts. A four byte length field, a four byte chunk type code field, the chunk data field whose length is specified in the chunk length field, and a four byte CRC (Cyclic Redundancy Check) field (see Figure \ref{fig_png_chunk_format}).
 
-The length field stores the length of the data field in bytes. PNG file uses {\em big endian} byte order, which is also the network byte order. When we process any PNG data that is more than one byte such as the length field, we need to convert the network byte order to host order before doing arithmetic. The \code{ntohl} and \code{htonl} library calls convert a 32 bit unsigned integer from network order to host order and vice versa respectively.
+The length field stores the length of the data field in bytes. PNG file uses {\em big endian} byte order, which is also the network byte order. When we process any PNG data that is more than one byte, such as the length field, we need to convert the network byte order to host order before doing arithmetic. The \code{ntohl} and \code{htonl} library calls convert a 32 bit unsigned integer from network order to host order and vice versa respectively.
 
 
 
@@ -247,7 +247,7 @@ The CRC field stores a cyclic redundancy check on the preceding bytes in the typ
 \end{wraptable}
 The IHDR chunk data field has a fixed length of 13 bytes which appear in the order shown in Table \ref{lab1:tb_IHDR_Data}. Width and height are four-byte unsigned integers giving the image dimensions in pixels. You will need these two values to complete this assignment. Bit depth gives the number of bits per sample. In this assignment, all images have a bit depth of 8. Colour type defines the PNG image type. All png images in this assignment have a colour type of 6, which is truecolor with alpha (i.e. RGBA image). The image pixel array data is filtered to prepare for the next step of compression. The Compression method and Filter method bytes encode the methods used. Both only have 0 values defined in the current standard. The Interlace method indicates the transmission order of the image data. 0 (no interlace) and 1 (Adam7 interlace) are the only two defined. In this assignment, all PNG images are non-interlaced. The Value column in table \ref{lab1:tb_IHDR_Data} gives the typical IHDR values for the PNG images that you will be processing.  
 
-The IDAT chunk data field contains compressed filtered pixel data. For each scanline, an extra byte is added at the very beginning of the pixel array to indicate the filter method used. Filtering is for preparing for the next step of compression. For example, if the raw pixel scanline is 4 bytes long, then the scanline after applying the filter will be 5 bytes long. This additional one byte per scanline will help to achieve better compression results. After all scanlines have been filtered, the data are compressed according to the compression method encoded in the IHDR chunk. The compressed data stream conforms to the zlib 1.0 format.
+The IDAT chunk data field contains compressed filtered pixel data. For each scanline, an extra byte is added at the very beginning of the pixel array to indicate the filter method used. Filtering is for preparing for the next step of compression. For example, if the raw pixel scanline is 16 bytes long (four pixels), then the scanline after applying the filter will be 17 bytes long. This additional one byte per scanline will help to achieve better compression results. After all scanlines have been filtered, the data is compressed according to the compression method encoded in the IHDR chunk. The compressed data stream conforms to the zlib 1.0 format.
 
 The IEND chunk marks the end of the PNG datastream. It has an empty data field.
 
@@ -256,9 +256,9 @@ To concatenate two horizontal image strips, the natural approach would be to sta
 
 However, a simpler method exists. We can start with the filtered pixel data of each image and then concatenate the two chunks of filtered pixel data arrays vertically, then apply the compression method to generate the data field of the new IDAT chunk.
 
-How do we get filtered pixel data from a PNG IDAT chunk? Recall that the data field in an IDAT chunk is compressed using zlib format 1.0. We can use zlib library functions to inflate (i.e. uncompress) the data. The \code{mem\_inf} function in the starter code takes in-memory deflatd (i.e. compressed) data as input and stores the uncompressed data in a given memory location. For each IDAT chunk you want to concatenate, you call this function and stack the returned data in the order you wish in order to obtain the concatenated filtered pixel array. To create an IDAT chunk, we need to compress the filtered pixel data. The \code{mem\_def} function in the starter code uses zlib to deflate (i.e. compress) the in-memory data and returns the deflated (i.e. uncompressed) data. The \verb+png_util+ directory in the starter code demonstrates how to use these two functions.
+How do we get filtered pixel data from a PNG IDAT chunk? Recall that the data field in an IDAT chunk is compressed using zlib format 1.0. We can use zlib library functions to inflate (i.e. uncompress) the data. The \code{mem\_inf} function in the starter code takes in-memory deflated (i.e. compressed) data as input and stores the uncompressed data in a given memory location. For each IDAT chunk you want to concatenate, you call this function and stack the returned data in the order you wish in order to obtain the concatenated filtered pixel array. To create an IDAT chunk, we need to compress the filtered pixel data. The \code{mem\_def} function in the starter code uses zlib to deflate (i.e. compress) the in-memory data and returns the deflated (i.e. compressed) data. The \verb+png_util+ directory in the starter code demonstrates how to use these two functions.
 
-To create a new PNG file for the concatenated images, an IHDR chunk also needs to have the dimensions of the new PNG file. The rest of the fields of the IHDR chunk can be kept the same as one of the PNG files to be concatenated. In this assignment, we assume that \verb+catpng+ can only process PNG files whose IHDR chunks only differ in the height field. So the new image will have a different height field, andand  the rest of the fields are the same as the input images.
+To create a new PNG file for the concatenated images, an IHDR chunk also needs to have the dimensions of the new PNG file. The rest of the fields of the IHDR chunk can be kept the same as any one of the PNG files to be concatenated. In this assignment, we assume that \verb+catpng+ can only process PNG files whose IHDR chunks only differ in the height field. So the new image will have a different height field, and  the rest of the fields are the same as the input images.
 
 
 
