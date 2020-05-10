@@ -3,58 +3,58 @@
 
 \section{ECE Linux Servers}
 
-There are a group of Linux Ubuntu servers that are open to ECE undergraduate students. The machines are listed at \url{https://ece.uwaterloo.ca/Nexus/arbeau/clients}. To access one of the machines, we recommend using the alias name of \verb+eceubuntu.uwaterloo.ca+, which will redirect you to the most lightly loaded machine at the time of login.
+There is a group of Linux Ubuntu servers that are open to ECE undergraduate students. The machines are listed at \url{https://ece.uwaterloo.ca/Nexus/arbeau/clients}. To access one of the machines, we recommend using the alias name of \verb+eceubuntu.uwaterloo.ca+, which will redirect you to the most lightly loaded machine at the time of login.
 
 To access these machines from off campus, you can use the \href{https://uwaterloo.ca/information-systems-technology/services/virtual-private-network-vpn}{campus VPN}.
 Another way is to first connect to \verb+eceterm.uwaterloo.ca+ and then connect to other Linux servers from there using the ssh command. Note that \verb+eceterm+ should not be used for computing jobs; it is for accessing other Linux servers on campus. Many of the tools you will be using are not supported on eceterm.
 
-\section{Connecting to Linux servers}
-
-A terminal client software that supports secure shell (ssh) will allow you to remotely connect to the Linux servers. MobaXterm is a convenient application that not only supports ssh, but also has a built-in X server that allows you to run Graphical User Interface (GUI) applications from the Linux servers.
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=5.5in]{img/lab0/MobaXterm/MobaXterm_Path}
-  \caption{MobaXterm Path on ECE Nexus Windows 10 Machines.}
-  \label{fig_MobaXterm_Path}
-\end{figure}
-
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=6in]{img/lab0/MobaXterm/MobaXterm_Start_Page}
-  \caption{MobaXterm Welcome Page.}
-  \label{fig_MobaXterm_Start_Page}
-\end{figure}
-
-Use the File Explorer to navigate to the \verb+Q:\eng\ece\Util+ folder, then scroll down until you find the MobaXterm icon and double click it (see Figure \ref{fig_MobaXterm_Path}). The MobaXterm window will pop up. There is a grey rectangular button labelled ``Start local terminal'' in the middle (see Figure \ref{fig_MobaXterm_Start_Page}). Click this button.
-
-Then a terminal session starts. You will need to use the command line \verb+ssh+ command to connect to the eceubuntu server. Use your UW userid and password to login. The syntax of the command is as follows:
-%\begin{verbatim}
-\begin{lstlisting}[style=bash]
-ssh -XY <UWID>@eceubuntu.uwaterloo.ca
-\end{lstlisting}
-% \end{verbatim}
-See Figure \ref{fig_MobaXterm_Login_Password} for reference.
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=6in]{img/lab0/MobaXterm/MobaXterm_Login_Password}
-  \caption{MobaXterm Welcome Page.}
-  \label{fig_MobaXterm_Login_Password}
-\end{figure}
-
-
-All your ECE Linux account files are accessible on your P Drive on Nexus machines (See Figure \ref{fig_lab0_P_Drive}). The P Drive is only accessible within the campus network. Mapping the Linux account as a network drive off campus is not supported for security reasons.
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=6in]{img/lab0/lab0_P_Drive}
-  \caption{Linux files on your P drive, a network mapped drive.}
-  \label{fig_lab0_P_Drive}
-\end{figure}
+%\section{Connecting to Linux servers}
+%
+%A terminal client software that supports secure shell (ssh) will allow you to remotely connect to the Linux servers. MobaXterm is a convenient application that not only supports ssh, but also has a built-in X server that allows you to run Graphical User Interface (GUI) applications from the Linux servers.
+%\begin{figure}[!htb]
+%  \centering
+%  \includegraphics[width=5.5in]{img/lab0/MobaXterm/MobaXterm_Path}
+%  \caption{MobaXterm Path on ECE Nexus Windows 10 Machines.}
+%  \label{fig_MobaXterm_Path}
+%\end{figure}
+%
+%\begin{figure}[!htb]
+%  \centering
+%  \includegraphics[width=6in]{img/lab0/MobaXterm/MobaXterm_Start_Page}
+%  \caption{MobaXterm Welcome Page.}
+%  \label{fig_MobaXterm_Start_Page}
+%\end{figure}
+%
+%Use the File Explorer to navigate to the \verb+Q:\eng\ece\Util+ folder, then scroll down until you find the MobaXterm icon and double click it (see Figure \ref{fig_MobaXterm_Path}). The MobaXterm window will pop up. There is a grey rectangular button labelled ``Start local terminal'' in the middle (see Figure \ref{fig_MobaXterm_Start_Page}). Click this button.
+%
+%Then a terminal session starts. You will need to use the command line \verb+ssh+ command to connect to the eceubuntu server. Use your UW userid and password to login. The syntax of the command is as follows:
+%%\begin{verbatim}
+%\begin{lstlisting}[style=bash]
+%ssh -XY <UWID>@eceubuntu.uwaterloo.ca
+%\end{lstlisting}
+%% \end{verbatim}
+%See Figure \ref{fig_MobaXterm_Login_Password} for reference.
+%\begin{figure}[!htb]
+%  \centering
+%  \includegraphics[width=6in]{img/lab0/MobaXterm/MobaXterm_Login_Password}
+%  \caption{MobaXterm Welcome Page.}
+%  \label{fig_MobaXterm_Login_Password}
+%\end{figure}
+%
+%
+%All your ECE Linux account files are accessible on your P Drive on Nexus machines (See Figure \ref{fig_lab0_P_Drive}). The P Drive is only accessible within the campus network. Mapping the Linux account as a network drive off campus is not supported for security reasons.
+%\begin{figure}[!htb]
+%  \centering
+%  \includegraphics[width=6in]{img/lab0/lab0_P_Drive}
+%  \caption{Linux files on your P drive, a network mapped drive.}
+%  \label{fig_lab0_P_Drive}
+%\end{figure}
 
 \section{Basic Software Development Tools}
 
 %[NOTE: adding a flow chart here]
 To develop a program, there are three important steps.
-First, a program is created from source code written by a programmer. Second, the source code is compiled into object code, which is a binary file (on Linux, these files have a ".o" extension). A non-trivial project normally contains more than one source file. Each source file is compiled into one object code file and the linker finally links all the object code to generate the final target, which is the executable that you run. The steps of compiling and linking are also known as building a target. It is very rare that the target will run perfectly the first time it is built. Most of time we need to fix defects and bugs in the code (this is the third step). The debugger is a tool to help you identify and fix theses bugs. Table \ref{tb_prog_tools} shows the key steps in programming work flow and example tools provided by a general purpose Linux operating system.
+First, a program is created from source code written by a programmer. Second, the source code is compiled into object code, which is a binary file (on Linux, these files have a ".o" extension). A non-trivial project normally contains more than one source file. Each source file is compiled into one object code file and the linker finally links all the object code to generate the final target, which is the executable that you run. The steps of compiling and linking are also known as building a target. It is very rare that the target will run perfectly the first time it is built. Most of time we need to fix defects and bugs in the code (this is the third step). The debugger is a tool to help you identify and fix these bugs. Table \ref{tb_prog_tools} shows the key steps in programming work flow and example tools provided by a general purpose Linux operating system.
 
 \begin{table}[ht]
 \begin{center}
@@ -105,7 +105,7 @@ gcc helloworld.c -o helloworld.out
 \end{lstlisting}
 although there is no requirement that the name ends in \verb+.out+.
 \subsection{Debugger}
-The GNU debugger gdb is a command line debugger. Many GUI (i.e. visual)  debuggers uses gdb as their back-end engine. One popular GNU GUI debugger is {\em ddd}. It has a powerful data display functionality. 
+The GNU debugger gdb is a command line debugger. Many GUI (i.e. visual)  debuggers use gdb as their back-end engine. One popular GNU GUI debugger is {\em ddd}. It has a powerful data display functionality. 
 
 GDB needs to read debugging information from the binary in order to be able to help you to debug the code. The \verb+-g+ option in gcc tells the compiler to produce such debugging information in the generated executable. In order to use gdb to debug our simple HelloWorld program, we need to compile it with the following command:
 \begin{lstlisting}[style=bash]
@@ -200,7 +200,7 @@ Line $1$ is a comment. Lines $2-7$ are variable definitions. Line $12$ is an imp
 See \url{http://www.gnu.org/software/make/manual/make.html} to explore more about makefiles.
 
 \subsection{Version Control Software}
-We use the Git version control software. It is installed both on the Linux servers and the Nexus Windows machines. If you decide to use GitHub to host your repository, please make sure it is a {\em private} one. Go to \url{http://github.com/edu} to see how to obtain five private repositories for two years on GitHub for free. 
+We use the Git version control software. If you decide to use GitHub to host your repository, please make sure it is a {\em private} one. Go to \url{http://github.com/edu} to see how to obtain five private repositories for two years on GitHub for free. 
 %This [] is a good reference on how to use Git and Dropbox together to create private repositories.
 
 %Table \ref{} lists some frequently used git commands.
@@ -212,7 +212,7 @@ Eclipse with the C/C++ Plug-in has been installed on all ECE Linux servers. Type
 \end{lstlisting}
 This Eclipse is not the same as the default Eclipse under the \verb+/usr/bin+ directory. You may find running Eclipse over a network performs poorly at home though. It depends on how fast your network speed is. 
 
-If you have a Linux operating system installed on your own personal computer, then you can download Eclipse with the C/C++ plugin from the Eclipse web site and then run it from your own local computer. However you should always make sure that your program will also work on the eceubuntu machines, since that is the environment TAs will be using to test your code.
+If you have a Linux operating system installed on your own personal computer, then you can download Eclipse with the C/C++ plugin from the Eclipse web site and then run it on your own local computer. However you should always make sure that your program will also work on the eceubuntu machines, since that is the environment that the TAs will be using to test your code.
 
 \section{Man Page}
 Linux provides manual pages. You can use the command \verb+man+ followed by the specific command or function you are interested in to obtain detailed information. 
