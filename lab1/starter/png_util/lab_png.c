@@ -22,15 +22,11 @@ int is_png(U8 *buf, size_t n){
 }
 
 int get_png_height(struct data_IHDR *buf){
-
-	return 0;
+	return buf->height;
 }
 
 int get_png_width(struct data_IHDR *buf){
-
-
-
-	return 0;
+	return buf->width;
 }
 
 
