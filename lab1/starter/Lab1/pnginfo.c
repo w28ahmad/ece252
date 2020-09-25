@@ -5,6 +5,8 @@
 #include <errno.h>    /* for errno                   */
 #include "lab_png.h"  /* simple PNG data structures  */
 #include <string.h>
+#include <arpa/inet.h>
+
 
 int is_png(U8 *buf, size_t n) {
     U8 signature[] = {0x89, 0x50, 0x4E, 0X47, 0X0D, 0X0A, 0X1A, 0X0A};  /* first 8 bytes of a PNG in decimal */
@@ -12,6 +14,8 @@ int is_png(U8 *buf, size_t n) {
     if (memcmp(signature, buf, n)) {  /*Compare the read bytes with the PNG identifier */
         return 0;
     }
+
+    /*TODO: check CRC*/
 
     return 1;
 }
@@ -26,6 +30,7 @@ int main (int argc, char **argv) {
 
     FILE* pic;
     U8 pngCode[8];
+    U32 wh[4];
     char* name = basename(argv[1]);
 
 
@@ -33,6 +38,11 @@ int main (int argc, char **argv) {
 
     fread(pngCode, sizeof(U8), 8, pic); /* Read the first 8 bytes of the file into pngCode */
 
+    fread(wh, sizeof(U32), 4, pic);
+
+    for (int i = 0; i < 4; i++){
+    	wh[i] = ntohl(wh[i]);
+    }
     fclose(pic);
 
     int i = is_png(pngCode, 8);
@@ -40,7 +50,7 @@ int main (int argc, char **argv) {
     if (i == 0) {   /* the first 8 bytes of the file did not match a PNG */
         printf("%s: Not a PNG file\n", name);
     } else if (i == 1) {    /* The file is a PNG */
-        printf("%s: %d x %d\n", name, i, i);
+        printf("%s: %d x %d\n", name, wh[2], wh[3]);
     } else if (i == 2) {    /* The file is a PNG with CRC errors */
 
     }
