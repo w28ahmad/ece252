@@ -1,6 +1,6 @@
 /**
- *  @brief  micros and structures for a simple PNG file 
- * 
+ * @brief  micros and structures for a simple PNG file 
+ *
  * Copyright 2018-2020 Yiqing Huang
  *
  * This software may be freely redistributed under the terms of MIT License
