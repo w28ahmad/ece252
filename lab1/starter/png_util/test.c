@@ -4,13 +4,33 @@
 #include "lab_png.h"
 
 
-void read(U8* buf, size_t size){
+void read8(U8* buf, size_t size){
 	for (int i = 0; i < size; i++)
 	{
 		if (i > 0) printf(":");
 		printf("%02X", buf[i]);
 	}
 	printf("\n");
+}
+
+
+void read32(U32* buf, size_t size){
+	for (int i = 0; i < size; i++)
+	{
+		if (i > 0) printf(":");
+		printf("%02X", buf[i]);
+	}
+	printf("\n");
+}
+/* TODO REMOVE THIS FUNCTION */
+void view_IHDR(struct data_IHDR png_IHDR){
+	printf("Width: %d\n", png_IHDR.width);
+	printf("Height: %d\n", png_IHDR.height);
+	read8(&png_IHDR.bit_depth, sizeof(png_IHDR.bit_depth));
+	read8(&png_IHDR.color_type, sizeof(png_IHDR.color_type));
+	read8(&png_IHDR.compression, sizeof(png_IHDR.compression));
+	read8(&png_IHDR.filter, sizeof(png_IHDR.filter));
+	read8(&png_IHDR.interlace, sizeof(png_IHDR.interlace));
 }
 
 /* TODO : is byteorder important if we are not using network communication? */
@@ -30,8 +50,8 @@ int readpng(char* filepath){
 		exit(EXIT_FAILURE);
 	}
 	
-	/* Print the buffer */
-	/* read(buf, PNG_SIG_SIZE); */
+	/* TODO Remove - Print the buffer */
+	/* read8(buf, PNG_SIG_SIZE); */
 
 	/* Ensure the file is a png file */
 	if(!is_png(buf, PNG_SIG_SIZE)){
@@ -39,8 +59,15 @@ int readpng(char* filepath){
 		exit(EXIT_FAILURE);
 	}
 
-	/* Read File chunks */
-	/* get/make prototyped functions for each of the chunks*/
+	/* Get IHDR chunk */
+	struct data_IHDR png_IHDR;
+	get_png_data_IHDR(&png_IHDR, fp, (size_t)8, SEEK_CUR);
+	/* view_IHDR(png_IHDR); TODO REMOVE*/
+
+	/* Get IDAT chuck */
+	
+
+	fclose(fp);
 	return 0;
 }
 
