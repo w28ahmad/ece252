@@ -7,8 +7,6 @@
 #include "lab_png.h"
 #include "crc.h"
 
-#define BUF_LEN (256*32)
-
 extern int errno;
 
 int incr_height(unsigned int* height, unsigned int* width, char* filepath){
@@ -44,23 +42,24 @@ void file_seek(FILE* fp, size_t offset, int whence){
 	}
 }
 
-void read8(U8* buf, size_t size){
-	for (int i = 0; i < size; i++)
-	{
-		if (i > 0) printf(" ");
-		printf("%02X", buf[i]);
-	}
-	printf("\n");
-}
+/* helper functions for reading value */
+/* void read8(U8* buf, size_t size){ */
+/* 	for (int i = 0; i < size; i++) */
+/* 	{ */
+/* 		if (i > 0) printf(" "); */
+/* 		printf("%02X", buf[i]); */
+/* 	} */
+/* 	printf("\n"); */
+/* } */
 
-void read32(U32* buf, size_t size){
-	for (int i = 0; i < size; i++)
-	{
-		if (i > 0) printf(" ");
-		printf("%02X", buf[i]);
-	}
-	printf("\n");
-}
+/* void read32(U32* buf, size_t size){ */
+/* 	for (int i = 0; i < size; i++) */
+/* 	{ */
+/* 		if (i > 0) printf(" "); */
+/* 		printf("%02X", buf[i]); */
+/* 	} */
+/* 	printf("\n"); */
+/* } */
 
 
 
@@ -130,6 +129,7 @@ int png_write32(U32* buf, size_t size, FILE* fp){
 int create_output_file(char* filename, U8* data, U64 data_len, struct simple_PNG* png, unsigned int height, unsigned int width){
 	FILE* fp;
 	fp = fopen(filename, "wb+");
+	
 	/* Write the signature*/
 	U8 SIGNATURE[PNG_SIG_SIZE] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
 	png_write8(SIGNATURE, (size_t)PNG_SIG_SIZE, fp);
@@ -137,17 +137,6 @@ int create_output_file(char* filename, U8* data, U64 data_len, struct simple_PNG
 	/* Create size & width (IHDR) data */
 	unsigned long host_height = ntohl(height);
 	memcpy(png->p_IHDR->p_data + sizeof(U32), &(host_height), sizeof(U32));
-
-	/* TODO crc Experiment */
-	/* read32(&(png->p_IHDR->crc), sizeof(U32)); */
-	/* size_t buf_size = htonl(png->p_IHDR->length)+sizeof(U8)*4; */
-	/* unsigned char buf_IHDR[buf_size]; */
-	/* memcpy(buf_IHDR, png->p_IHDR->type, sizeof(U8)*4); */
-	/* memcpy(buf_IHDR+sizeof(U8)*4, png->p_IHDR->p_data, (size_t)htonl(png->p_IHDR->length)); */
-	/* read8(buf_IHDR, buf_size); */
-	/* U32 IHDR_crc = ntohl(crc(buf_IHDR, buf_size)); */
-	/* printf("%lu\n", IHDR_crc); */
-	/* read32(&(IHDR_crc), sizeof(32)); */
 
 	/* Write IHDR */
 	png_write32(&(png->p_IHDR->length), sizeof(U32), fp);
@@ -159,7 +148,6 @@ int create_output_file(char* filename, U8* data, U64 data_len, struct simple_PNG
 	unsigned char buf_IHDR[buf_size];
 	memcpy(buf_IHDR, png->p_IHDR->type, sizeof(U8)*4);
 	memcpy(buf_IHDR+sizeof(U8)*4, png->p_IHDR->p_data, (size_t)htonl(png->p_IHDR->length));
-	read8(buf_IHDR, buf_size);
 	unsigned long IHDR_crc = ntohl(crc(buf_IHDR, buf_size));
 	memcpy(&(png->p_IHDR->crc), &(IHDR_crc), sizeof(U32));
 	png_write32(&(png->p_IHDR->crc), sizeof(U32), fp);	
@@ -167,7 +155,6 @@ int create_output_file(char* filename, U8* data, U64 data_len, struct simple_PNG
 	/* Write IDAT */
 	unsigned long host_data_length = ntohl(data_len);
 	memcpy(&(png->p_IDAT->length), &(host_data_length), sizeof(U32));
-
 	png_write32(&(png->p_IDAT->length), sizeof(U32), fp);
 	png_write8(png->p_IDAT->type, sizeof(png->p_IDAT->type), fp);
 	png_write8(data, (size_t)data_len, fp);
@@ -177,7 +164,6 @@ int create_output_file(char* filename, U8* data, U64 data_len, struct simple_PNG
 	unsigned char buf_IDAT[buf_size];
 	memcpy(buf_IDAT, png->p_IDAT->type, sizeof(U8)*4);
 	memcpy(buf_IDAT+sizeof(U8)*4, data, (size_t)data_len);
-	/* read8(buf_IDAT, buf_size); */
 	unsigned long IDAT_crc = ntohl(crc(buf_IDAT, buf_size));
 	memcpy(&(png->p_IDAT->crc), &(IDAT_crc), sizeof(U32));
 	png_write32(&(png->p_IDAT->crc), sizeof(U32), fp);	
@@ -191,10 +177,9 @@ int create_output_file(char* filename, U8* data, U64 data_len, struct simple_PNG
 	return 0;
 }
 
-
 int main(int argc, char* argv[]){
 	if(argc == 1){
-		fprintf(stderr, "PNG image required");
+		fprintf(stderr, "PNG image required\n");
 		return EXIT_FAILURE;
 	}
 
@@ -213,12 +198,12 @@ int main(int argc, char* argv[]){
 	}
 
 	int ret = 0;
-	U64 len_inf = 0;
 	int size = height * (width * 4 + 1);
 	int pos = 0;
-	U8 concat_buf[size];
-	/* TODO use the formula to find the size of the buf_inf */
-	U8 buf_inf[BUF_LEN];
+	U8* concat_buf = malloc(sizeof(U8)*size);
+	U8* buf_inf = malloc(sizeof(U8)*size);
+	U64 len_inf = 0;
+	
 	for(i=1; i < argc; i++){
 		/* Get filtered chunk */
 		ret = mem_inf(buf_inf, &len_inf, png_list[i-1].p_IDAT->p_data, htonl(png_list[i-1].p_IDAT->length));
@@ -229,17 +214,24 @@ int main(int argc, char* argv[]){
 		memcpy(&concat_buf[pos], &buf_inf[0], (size_t) len_inf);
 		pos += len_inf;
 	}
+	free(buf_inf);
 
 	/* Apply compression, generate new IDAT chunk */
-	U8 buf_def[BUF_LEN];
+	U8* buf_def = malloc(sizeof(U8)*size);
 	U64 len_def = 0;
 	ret = mem_def(buf_def, &len_def, concat_buf, size, Z_DEFAULT_COMPRESSION); 
 	if(ret != 0){
 		fprintf(stderr, "mem def failed. ret=%d.\n", ret);
 	}
+	free(concat_buf);
+
+	/* Create a smaller buffer just for the deflated data */
+	U8 buf_def_min[len_def];
+	memcpy(buf_def_min, buf_def, (size_t)len_def); 
+	free(buf_def);
 
 	/* Write to ouput file */
-	create_output_file("all.png", buf_def, len_def, &png_list[0], height, width);
+	create_output_file("all.png", buf_def_min, len_def, &png_list[0], height, width);
 
 	for(i=1; i < argc; i++){
 		/* Free allocated memory */
@@ -249,6 +241,5 @@ int main(int argc, char* argv[]){
 		free(png_list[i-1].p_IHDR);
 		free(png_list[i-1].p_IEND);
 	}
-
 	return 0;
 }

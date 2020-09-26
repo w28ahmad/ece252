@@ -22,9 +22,6 @@ all: ${TARGETS}
 main.out: $(OBJS) 
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
 
-test.out: $(OBJS)
-	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
-
 catpng.out: $(OBJS)
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
 
@@ -36,9 +33,6 @@ catpng.out: $(OBJS)
 
 -include $(SRCS:.c=.d)
 
-run:
-	./catpng.out ./pics/pic_1.png ./pics/pic_2.png ./pics/pic_3.png
-
 .PHONY: clean
 clean:
-	rm -f *.d *.o $(TARGETS) 
+	rm -f *.d *.o $(TARGETS) all.png 
