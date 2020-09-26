@@ -226,12 +226,13 @@ int main(int argc, char* argv[]){
 	free(concat_buf);
 
 	/* Create a smaller buffer just for the deflated data */
-	U8 buf_def_min[len_def];
+	U8* buf_def_min = malloc(sizeof(U8)*len_def);
 	memcpy(buf_def_min, buf_def, (size_t)len_def); 
 	free(buf_def);
 
 	/* Write to ouput file */
 	create_output_file("all.png", buf_def_min, len_def, &png_list[0], height, width);
+	free(buf_def_min);
 
 	for(i=1; i < argc; i++){
 		/* Free allocated memory */
