@@ -1,4 +1,4 @@
-# Makefile, ECE252  
+# Makefile, ECE252 
 # Yiqing Huang
 
 CC = gcc       # compiler
@@ -10,20 +10,17 @@ LDLIBS = -lz   # link with libz
 # For students 
 LIB_UTIL = zutil.o crc.o lab_png.o
 SRCS   = crc.c zutil.c lab_png.c
-#SRCS   = main.c crc.c zutil.c lab_png.c
-#OBJS   = main.o $(LIB_UTIL) 
 OBJS	= catpng.o $(LIB_UTIL)
 
-#TARGETS= main.out 
+# ADD THE NEEDED FUNCTIONS HERE
 TARGETS= catpng.out
 
 all: ${TARGETS}
 
-main.out: $(OBJS) 
-	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
-
+# ADD THE TARGETS HERE
 catpng.out: $(OBJS)
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
+
 
 %.o: %.c 
 	$(CC) $(CFLAGS) -c $< 
@@ -33,6 +30,7 @@ catpng.out: $(OBJS)
 
 -include $(SRCS:.c=.d)
 
+# ADD THE CLEANS HERE
 .PHONY: clean
 clean:
 	rm -f *.d *.o $(TARGETS) all.png 
