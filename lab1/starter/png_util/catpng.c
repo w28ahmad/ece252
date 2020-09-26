@@ -38,6 +38,7 @@ int incr_height(unsigned int* height, unsigned int* width, char* filepath){
 void file_seek(FILE* fp, size_t offset, int whence){
 	if(fseek(fp, offset, whence) != 0){
 		fprintf(stderr, "fseek failed\n");
+		fclose(fp);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -111,6 +112,7 @@ int png_write8(U8* buf, size_t size, FILE* fp){
 	size_t ret = fwrite(buf, size, sizeof(U8), fp);
 	if(!ret){
 		fprintf(stderr, "fwrite failed %d %s\n", errno, strerror(errno));
+		fclose(fp);
 		exit(EXIT_FAILURE);
 	}
 	return 0;
@@ -120,6 +122,7 @@ int png_write32(U32* buf, size_t size, FILE* fp){
 	size_t ret = fwrite(buf, size, sizeof(U8), fp);
 	if(!ret){
 		fprintf(stderr, "fwrite failed %d %s\n", errno, strerror(errno));
+		fclose(fp);
 		exit(EXIT_FAILURE);
 	}
 	return 0;

@@ -33,13 +33,16 @@ int get_png_width(struct data_IHDR *buf){
 int get_png_data_IHDR(struct data_IHDR *out, FILE *fp, long offset, int whence){
 	
 	if(fseek(fp, offset, whence) != 0){
-		return EXIT_FAILURE;
+		printf("fseek failed\n");
+		fclose(fp);
+		exit(EXIT_FAILURE);
 	}
 	
 	U8 buf[DATA_IHDR_SIZE];
 	size_t ret = fread(buf, sizeof(buf)/sizeof(*buf), sizeof(*buf), fp);
 
 	if (ret != sizeof(*buf)) {
+		fclose(fp);
 		fprintf(stderr, "fread() failed: %zu\n", ret);
 		exit(EXIT_FAILURE);
 	}
