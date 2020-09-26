@@ -5,12 +5,13 @@
 #include <errno.h>
 #include "zutil.h"
 #include "lab_png.h"
+#include "crc.h"
 
 #define BUF_LEN (256*32)
 
 extern int errno;
 
-int incr_height(int* height, int* width, char* filepath){
+int incr_height(unsigned int* height, unsigned int* width, char* filepath){
 	/* Open */
 	FILE* fp = fopen(filepath, "rb");
 	if(!fp){
@@ -107,14 +108,84 @@ int create_simple_png(struct simple_PNG* png, char* filepath){
 	return 0;
 }
 
-int create_output_file(char* filename, U8* data, int data_len, struct simple_PNG* png, int height, int width){
+int png_write8(U8* buf, size_t size, FILE* fp){
+	size_t ret = fwrite(buf, size, sizeof(U8), fp);
+	if(!ret){
+		fprintf(stderr, "fwrite failed %d %s\n", errno, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	return 0;
+}
+
+int png_write32(U32* buf, size_t size, FILE* fp){
+	size_t ret = fwrite(buf, size, sizeof(U8), fp);
+	if(!ret){
+		fprintf(stderr, "fwrite failed %d %s\n", errno, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	return 0;
+}
+
+
+int create_output_file(char* filename, U8* data, U64 data_len, struct simple_PNG* png, unsigned int height, unsigned int width){
 	FILE* fp;
 	fp = fopen(filename, "wb+");
-	/* Create size & width (IHDR) data */
-	/* Write IHDR */
-	/* Write IDAT */
-	/* Write IEND */
+	/* Write the signature*/
+	U8 SIGNATURE[PNG_SIG_SIZE] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+	png_write8(SIGNATURE, (size_t)PNG_SIG_SIZE, fp);
 	
+	/* Create size & width (IHDR) data */
+	unsigned long host_height = ntohl(height);
+	memcpy(png->p_IHDR->p_data + sizeof(U32), &(host_height), sizeof(U32));
+
+	/* TODO crc Experiment */
+	/* read32(&(png->p_IHDR->crc), sizeof(U32)); */
+	/* size_t buf_size = htonl(png->p_IHDR->length)+sizeof(U8)*4; */
+	/* unsigned char buf_IHDR[buf_size]; */
+	/* memcpy(buf_IHDR, png->p_IHDR->type, sizeof(U8)*4); */
+	/* memcpy(buf_IHDR+sizeof(U8)*4, png->p_IHDR->p_data, (size_t)htonl(png->p_IHDR->length)); */
+	/* read8(buf_IHDR, buf_size); */
+	/* U32 IHDR_crc = ntohl(crc(buf_IHDR, buf_size)); */
+	/* printf("%lu\n", IHDR_crc); */
+	/* read32(&(IHDR_crc), sizeof(32)); */
+
+	/* Write IHDR */
+	png_write32(&(png->p_IHDR->length), sizeof(U32), fp);
+	png_write8(png->p_IHDR->type, sizeof(png->p_IHDR->type), fp);
+	png_write8(png->p_IHDR->p_data, (size_t)(htonl(png->p_IHDR->length)), fp);
+	
+	/* Create and Write IHDR CRC */
+	size_t buf_size = htonl(png->p_IHDR->length)+sizeof(U8)*4;
+	unsigned char buf_IHDR[buf_size];
+	memcpy(buf_IHDR, png->p_IHDR->type, sizeof(U8)*4);
+	memcpy(buf_IHDR+sizeof(U8)*4, png->p_IHDR->p_data, (size_t)htonl(png->p_IHDR->length));
+	read8(buf_IHDR, buf_size);
+	unsigned long IHDR_crc = ntohl(crc(buf_IHDR, buf_size));
+	memcpy(&(png->p_IHDR->crc), &(IHDR_crc), sizeof(U32));
+	png_write32(&(png->p_IHDR->crc), sizeof(U32), fp);	
+
+	/* Write IDAT */
+	unsigned long host_data_length = ntohl(data_len);
+	memcpy(&(png->p_IDAT->length), &(host_data_length), sizeof(U32));
+
+	png_write32(&(png->p_IDAT->length), sizeof(U32), fp);
+	png_write8(png->p_IDAT->type, sizeof(png->p_IDAT->type), fp);
+	png_write8(data, (size_t)data_len, fp);
+
+	/* Write IDAT CRC */
+	buf_size = data_len+sizeof(U8)*4;
+	unsigned char buf_IDAT[buf_size];
+	memcpy(buf_IDAT, png->p_IDAT->type, sizeof(U8)*4);
+	memcpy(buf_IDAT+sizeof(U8)*4, data, (size_t)data_len);
+	/* read8(buf_IDAT, buf_size); */
+	unsigned long IDAT_crc = ntohl(crc(buf_IDAT, buf_size));
+	memcpy(&(png->p_IDAT->crc), &(IDAT_crc), sizeof(U32));
+	png_write32(&(png->p_IDAT->crc), sizeof(U32), fp);	
+
+	/* Write IEND */
+	png_write32(&(png->p_IEND->length), sizeof(U32), fp);
+	png_write8(png->p_IEND->type, sizeof(png->p_IEND->type), fp);
+	png_write32(&(png->p_IEND->crc), sizeof(U32), fp);
 	
 	fclose(fp);
 	return 0;
@@ -127,8 +198,8 @@ int main(int argc, char* argv[]){
 		return EXIT_FAILURE;
 	}
 
-	int height=0;
-	int width=0;
+	unsigned int height=0;
+	unsigned int width=0;
 	int i;
 	for(i=1; i < argc; i++){
 		/* get the total height and width */
