@@ -62,7 +62,7 @@ int readpng(char* filepath){
 	/* Get IHDR chunk */
 	struct data_IHDR png_IHDR;
 	get_png_data_IHDR(&png_IHDR, fp, (size_t)8, SEEK_CUR);
-	/* view_IHDR(png_IHDR); TODO REMOVE*/
+	/* view_IHDR(png_IHDR); // TODO REMOVE*/
 
 	/* Get IDAT chuck */
 	

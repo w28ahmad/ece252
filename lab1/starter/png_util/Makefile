@@ -12,10 +12,10 @@ LIB_UTIL = zutil.o crc.o lab_png.o
 SRCS   = crc.c zutil.c lab_png.c
 #SRCS   = main.c crc.c zutil.c lab_png.c
 #OBJS   = main.o $(LIB_UTIL) 
-OBJS	= test.o $(LIB_UTIL)
+OBJS	= catpng.o $(LIB_UTIL)
 
 #TARGETS= main.out 
-TARGETS= test.out
+TARGETS= catpng.out
 
 all: ${TARGETS}
 
@@ -25,6 +25,9 @@ main.out: $(OBJS)
 test.out: $(OBJS)
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
 
+catpng.out: $(OBJS)
+	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
+
 %.o: %.c 
 	$(CC) $(CFLAGS) -c $< 
 
@@ -32,6 +35,9 @@ test.out: $(OBJS)
 	gcc -MM -MF $@ $<
 
 -include $(SRCS:.c=.d)
+
+run:
+	./catpng.out ./pics/pic_1.png ./pics/pic_2.png ./pics/pic_3.png
 
 .PHONY: clean
 clean:
