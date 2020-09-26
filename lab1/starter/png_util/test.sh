@@ -25,7 +25,7 @@ sleep 1
 
 echo "crop test 1"
 sleep 1
-./catpng.out ./pics/cropped/pic_cropped/pic_cropped*
+./catpng.out ./pics/cropped/pic_cropped*
 echo "crop test 2"
 sleep 1
 ./catpng.out ./pics/uweng_cropped/uweng_cropped*
