@@ -9,7 +9,7 @@ LIB_UTIL = zutil.o crc.o
 SRCS   = pnginfo.c crc.c zutil.c
 OBJS   = pnginfo.o $(LIB_UTIL) 
 
-TARGETS= pnginfo 
+TARGETS= pnginfo
 
 all: ${TARGETS}
 
