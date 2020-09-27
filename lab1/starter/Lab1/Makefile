@@ -22,6 +22,7 @@ OBJ3   = catpng.o lab_png.o $(LIB_UTIL)
 NAME1 = pnginfo
 NAME2 = findpng
 NAME3 = catpng
+PNG_OUT = all.png
 
 all: $(NAME1) $(NAME2) $(NAME3)
 
@@ -44,4 +45,4 @@ $(NAME3): $(OBJ3)
 
 .PHONY: clean
 clean:
-	rm -f *.d *.o $(NAME1) $(NAME2) $(NAME3)
+	rm -f *.d *.o $(NAME1) $(NAME2) $(NAME3) $(PNG_OUT)

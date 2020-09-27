@@ -182,7 +182,7 @@ int create_output_file(char* filename, U8* data, U64 data_len, struct simple_PNG
 
 int main(int argc, char* argv[]){
 	if(argc == 1){
-		fprintf(stderr, "PNG image required\n");
+		fprintf(stderr, "Usage ./catpng <pic1.png pic2.png ...>\n");
 		return EXIT_FAILURE;
 	}
 
