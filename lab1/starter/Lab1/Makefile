@@ -1,6 +1,3 @@
-# Makefile, ECE252 
-# Yiqing Huang
-
 CC = gcc       # compiler
 CFLAGS = -Wall -g -std=c99 # compilation flags
 LD = gcc       # linker
@@ -8,29 +5,39 @@ LDFLAGS = -g   # debugging symbols in build
 LDLIBS = -lz   # link with libz
 
 # For students 
-LIB_UTIL = zutil.o crc.o lab_png.o
-SRCS   = crc.c zutil.c lab_png.c
-OBJS	= catpng.o $(LIB_UTIL)
+LIB_UTIL = zutil.o crc.o
+SRC1   = pnginfo.c crc.c
+OBJ1   = pnginfo.o $(LIB_UTIL) 
 
-# ADD THE NEEDED FUNCTIONS HERE
-TARGETS= catpng.out
+SRC2   = findpng.c crc.c
+OBJ2   = findpng.o $(LIB_UTIL)
 
-all: ${TARGETS}
+SRC3   = crc.c zutil.c lab_png.c catpng.c
+OBJ3   = catpng.o lab_png.o $(LIB_UTIL)
 
-# ADD THE TARGETS HERE
-catpng.out: $(OBJS)
-	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
+NAME1 = pnginfo
+NAME2 = findpng
+NAME3 = catpng
 
+all: $(NAME1) $(NAME2) $(NAME3)
 
-%.o: %.c 
-	$(CC) $(CFLAGS) -c $< 
+$(NAME1): $(OBJ1)
+	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS)
+
+$(NAME2): $(OBJ2)
+	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS)
+
+$(NAME3): $(OBJ3)
+	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<  
 
 %.d: %.c
 	gcc -MM -MF $@ $<
 
 -include $(SRCS:.c=.d)
 
-# ADD THE CLEANS HERE
 .PHONY: clean
 clean:
-	rm -f *.d *.o $(TARGETS) all.png 
+	rm -f *.d *.o $(NAME1) $(NAME2) $(NAME3)
