@@ -44,6 +44,10 @@ int main (int argc, char **argv) {
 
 
     pic = fopen(argv[1], "r");
+    if (!pic) {
+    	fprintf(stderr, "fopen failed %d %s\n", errno, strerror(errno));
+	exit(EXIT_FAILURE);
+    }
 
     fread(pngCode, sizeof(U8), 8, pic); /* Read the first 8 bytes of the file into pngCode */
 

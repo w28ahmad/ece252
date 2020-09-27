@@ -75,6 +75,10 @@ int printPng(const char *path, int counter) {
 
 			if (pd->d_name[len-4] == '.' && pd->d_name[len-3] == 'p' && pd->d_name[len-2] == 'n'  && pd->d_name[len-1] == 'g') {	/* the file is a .png */
 				pic = fopen(newPath, "r");		/* open the file */
+				if (!pic){
+					fprintf(stderr, "fopen failed %d %s\n", errno, strerror(errno));
+					exit(EXIT_FAILURE);
+				}
 				fread(pngCode, sizeof(U8), 8, pic);	/* read the 8 byte identifier */
 				pngCheck = is_png(pngCode, 8);		/* compare with known PNG identifier */
 				if (pngCheck == 1) {			/* if it is a valid PNG, print the filepath */
