@@ -24,8 +24,8 @@ int main (int argc, char **argv) {
 
 	/* invalid args */
     if (argc != 2) {
-        printf("invalid args. Format should be: pnginfo <filename>\n");
-        return -1;
+        printf("invalid args. Usage: pnginfo <filename>\n");
+        return EXIT_FAILURE;
     }
 
     FILE* pic;			/* FILE for PNG */
@@ -45,7 +45,7 @@ int main (int argc, char **argv) {
 
     pic = fopen(argv[1], "r");
     if (!pic) {
-    	fprintf(stderr, "fopen failed %d %s\n", errno, strerror(errno));
+    	fprintf(stderr, "fopen failed %s\n", strerror(errno));
 	exit(EXIT_FAILURE);
     }
 

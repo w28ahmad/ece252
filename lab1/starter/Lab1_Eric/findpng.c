@@ -23,16 +23,17 @@ int is_png(U8 *buf, size_t n) {
     return 1;
 }
 
-int printPng(const char *path, int counter) {
+int printPng(const char *truePath, const char *printPath, int counter) {
 
 	int pngCounter = counter;		/* number of PNG files found */
-	char newPath[1000];			/* string to hold the next filepath */
-	int pathlen = strlen(path);		/* length of given string */
+	char newTruePath[1000];			/* string to hold the next filepath */
+	char newPrintPath[1000];		/* string to hold the next print path */
+	int pathlen = strlen(truePath);		/* length of given string */
 	U8 pngCode[8];				/* 8 byte PNG identifier */
 	FILE* pic;				/* PNG file */
 	int pngCheck;				/* return value from is_png - determines whether a file is a PNG */
 	struct dirent *pd;			/* p_dirent */
-	DIR *p_dir = opendir(path);		/* opened directory at given path */
+	DIR *p_dir = opendir(truePath);		/* opened directory at given path */
 
 
 	if (p_dir == NULL) {			/* directory was not valid - return 0 */
@@ -41,20 +42,22 @@ int printPng(const char *path, int counter) {
 
 	while ((pd = readdir(p_dir)) != NULL) {	/* observe each item in the directory */
 		if (strcmp(pd->d_name, ".") != 0 && strcmp(pd->d_name, "..") != 0) {	/* the item is not . or .. */
-			int len = strlen(pd->d_name);	/* get the length of the current file's name */
 			
-			strcpy(newPath, path);		/* determine the filepath of this file */
-			if (path[pathlen - 1] != '/') {	/* add a / to separate the directory and the current file */
-				strcat(newPath, "/");	/* if it is not already there */
+			strcpy(newTruePath, truePath);		/* determine the filepath of this file */
+			strcpy(newPrintPath, printPath);
+			if (truePath[pathlen - 1] != '/') {	/* add a / to separate the directory and the current file */
+				strcat(newTruePath, "/");	/* if it is not already there */
+				strcat(newPrintPath, "/");
 			}
-			strcat(newPath, pd->d_name);
+			strcat(newTruePath, pd->d_name);
+			strcat(newPrintPath, pd->d_name);
 
 
 			char *ptr;			/* check the file type */
 			struct stat buf;		/* code taken from ls_ftype.c */
 
-		        if (lstat(newPath, &buf) < 0) {
-				perror("lstat error");
+		        if (lstat(newTruePath, &buf) < 0) {
+				perror("lstat error\n");
 		        }   
 
 		        if      (S_ISREG(buf.st_mode))  ptr = "regular";
@@ -71,10 +74,7 @@ int printPng(const char *path, int counter) {
         	else                            ptr = "**unknown mode**";
 	        if (strcmp(ptr, "symbolic link") != 0) {	/* if the file is not a symbolic link, proceed */
 
-
-
-			if (pd->d_name[len-4] == '.' && pd->d_name[len-3] == 'p' && pd->d_name[len-2] == 'n'  && pd->d_name[len-1] == 'g') {	/* the file is a .png */
-				pic = fopen(newPath, "r");		/* open the file */
+				pic = fopen(newTruePath, "r");		/* open the file */
 				if (!pic){
 					fprintf(stderr, "fopen failed %d %s\n", errno, strerror(errno));
 					exit(EXIT_FAILURE);
@@ -83,12 +83,11 @@ int printPng(const char *path, int counter) {
 				pngCheck = is_png(pngCode, 8);		/* compare with known PNG identifier */
 				if (pngCheck == 1) {			/* if it is a valid PNG, print the filepath */
 					pngCounter++;			/* increment pngCounter */
-					printf("%s\n", newPath);
+					printf("%s\n", newPrintPath);
 				}
 				fclose(pic);
-			} else {
-				pngCounter += printPng(newPath, pngCounter);	/* call pngPrint with newPath */
-			}
+				pngCounter += printPng(newTruePath, newPrintPath, pngCounter);	/* call pngPrint with newPath */
+
 		}
 	}
 	}
@@ -100,13 +99,28 @@ int printPng(const char *path, int counter) {
 
 int main (int argc, char **argv) {
 
-
     if (argc != 2) {			/* invalid args */
-        printf("invalid args. Format should be: findpng <directory>\n");
-        return -1;
+        fprintf(stderr, "invalid args. Usage: findpng <directory>\n");
+        return EXIT_FAILURE;
     }
 
-    int i = printPng(argv[1], 0);	/* print all PNG files in given directory */
+    DIR *test_dir;
+	if ((test_dir = opendir(argv[1])) == NULL) {
+		fprintf(stderr, "Error opening directory: %s\n", argv[1]);
+		return EXIT_FAILURE;
+	} else {
+		closedir(test_dir);
+	}
+	int pathLen = strlen(argv[1]);
+	if (argv[1][pathLen - 1] == '/') {
+		argv[1][pathLen - 1] = '\0';
+	}
+
+    char* name = basename(argv[1]);
+	
+
+
+    int i = printPng(argv[1], name, 0);	/* print all PNG files in given directory */
 
     if (i == 0) {
 	printf("findpng: No PNG file found\n");	/* No valid PNG files were found */

@@ -6,18 +6,32 @@ LDLIBS = -lz   # link with libz
 
 # For students 
 LIB_UTIL = zutil.o crc.o
-SRCS   = findpng.c crc.c zutil.c
-OBJS   = findpng.o $(LIB_UTIL) 
+SRC1   = pnginfo.c crc.c
+OBJ1   = pnginfo.o $(LIB_UTIL) 
 
-TARGETS= findpng 
+SRC2   = findpng.c crc.c
+OBJ2   = findpng.o $(LIB_UTIL)
 
-all: ${TARGETS}
+SRC3   = crc.c zutil.c lab_png.c catpng.c
+OBJ3   = catpng.o lab_png.o $(LIB_UTIL)
 
-pnginfo: $(OBJS) 
-	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
+NAME1 = pnginfo
+NAME2 = findpng
+NAME3 = catpng
 
-%.o: %.c 
-	$(CC) $(CFLAGS) -c $< 
+all: $(NAME1) $(NAME2) $(NAME3)
+
+$(NAME1): $(OBJ1)
+	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS)
+
+$(NAME2): $(OBJ2)
+	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS)
+
+$(NAME3): $(OBJ3)
+	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<  
 
 %.d: %.c
 	gcc -MM -MF $@ $<
@@ -26,4 +40,4 @@ pnginfo: $(OBJS)
 
 .PHONY: clean
 clean:
-	rm -f *.d *.o $(TARGETS) 
+	rm -f *.d *.o $(NAME1) $(NAME2) $(NAME3)
