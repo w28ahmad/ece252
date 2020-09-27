@@ -1,6 +1,6 @@
 /**
- *  @brief  micros and structures for a simple PNG file 
- * 
+ * @brief  micros and structures for a simple PNG file 
+ *
  * Copyright 2018-2020 Yiqing Huang
  *
  * This software may be freely redistributed under the terms of MIT License
@@ -57,7 +57,6 @@ typedef struct simple_PNG {
     struct chunk *p_IDAT;  /* only handles one IDAT chunk */  
     struct chunk *p_IEND;
 } *simple_PNG_p;
-
 
 /******************************************************************************
  * FUNCTION PROTOTYPES 
