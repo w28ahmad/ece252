@@ -1,5 +1,5 @@
-C = gcc 
-CFLAGS = -Wall -std=c99 -g # "curl-config --cflags" output is empty  
+CC = gcc 
+CFLAGS = -Wall -std=gnu99 -g # "curl-config --cflags" output is empty  
 LD = gcc
 LDFLAGS = -std=c99 -g 
 LDLIBS = -lcurl # "curl-config --libs" output 
@@ -14,14 +14,13 @@ paster.out: $(OBJS1)
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS)
 
 %.o: %.c 
-	        $(CC) $(CFLAGS) -c $< 
+	$(CC) $(CFLAGS) -c $< 
 
 %.d: %.c
-	        gcc -MM -MF $@ $<
+	 gcc -MM -MF $@ $<
 
 -include $(SRCS:.c=.d)
 
 .PHONY: clean
-
 clean:
 	rm -f *~ *.d *.o $(TARGETS) *.png

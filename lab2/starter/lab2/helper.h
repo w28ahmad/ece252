@@ -10,7 +10,7 @@
 /******************************************************************************
  * INCLUDE HEADER FILES
  *****************************************************************************/
-#include <stdio.h>
+/* #include <stdio.h> */
 
 /******************************************************************************
  * DEFINED MACROS 
@@ -21,6 +21,14 @@
 #define CHUNK_TYPE_SIZE 4 /* chunk type field size in bytes */
 #define CHUNK_CRC_SIZE  4 /* chunk CRC field size in bytes */
 #define DATA_IHDR_SIZE 13 /* IHDR chunk data field size */
+
+#define BUF_SIZE 1048576  /* 1024*1024 = 1M */
+#define BUF_INC  524288   /* 1024*512  = 0.5M */
+
+#define max(a, b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
 
 #define IMG_URL_1 "http://ece252-1.uwaterloo.ca:2520/image?img=1"
 #define IMG_URL_2 "http://ece252-1.uwaterloo.ca:2520/image?img=2"
