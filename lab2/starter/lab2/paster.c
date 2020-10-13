@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <curl/curl.h>
 #include "helper.h"
 
@@ -172,12 +173,17 @@ int save_image(char* url){
 
     /* specify URL to get */
     curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+
     /* register write call back function to process received data */
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_cb_curl3); 
-	/* register header call back function to process received header data */
-    curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, header_cb_curl); 
     /* user defined data structure passed to the call back function */
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&recv_buf);
+
+	/* register header call back function to process received header data */
+    curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, header_cb_curl); 
+	/* user defined data structure passed to the call back function */
+    curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void *)&recv_buf);
+
     /* some servers requires a user-agent field */
     curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
@@ -191,7 +197,7 @@ int save_image(char* url){
 			recv_buf.size, recv_buf.buf, recv_buf.seq);
     }
 
-    sprintf(fname, "./output_%d.png", pid);
+    sprintf(fname, "./output_%d_%d.png", recv_buf.seq, pid);
     write_file(fname, recv_buf.buf, recv_buf.size);
 
     /* cleaning up */
