@@ -50,12 +50,19 @@ typedef struct simple_PNG {
 } *simple_PNG_p;
 
 
+typedef struct recv_buf {
+    char *buf;       /* memory to hold a copy of received data */
+    size_t size;     /* size of valid data in buf in bytes*/
+    size_t max_size; /* max capacity of buf in bytes*/
+    int seq;         /* >=0 sequence number extracted from http header */
+                     /* <0 indicates an invalid seq number */
+} RECV_BUF;
+
 /******************************************************************************
  * FUNCTION PROTOTYPES 
  *****************************************************************************/
-/* int is_png(U8 *buf, size_t n); */
-/* int get_png_height(struct data_IHDR *buf); */
-/* int get_png_width(struct data_IHDR *buf); */
-/* int get_png_data_IHDR(struct data_IHDR *out, FILE *fp, long offset, int whence); */
-
-/* declare your own functions prototypes here */
+size_t write_cb_curl3(char *p_recv, size_t size, size_t nmemb, void *p_userdata);
+int recv_buf_init(RECV_BUF *ptr, size_t max_size);
+int recv_buf_cleanup(RECV_BUF *ptr);
+int write_file(const char *path, const void *in, size_t len);
+size_t header_cb_curl(char *p_recv, size_t size, size_t nmemb, void *userdata);
