@@ -8,7 +8,7 @@
 #include <curl/curl.h>
 #include "helper.h"
 
-typedef struct recv_buf2 {
+typedef struct recv_buf {
     char *buf;       /* memory to hold a copy of received data */
     size_t size;     /* size of valid data in buf in bytes*/
     size_t max_size; /* max capacity of buf in bytes*/
@@ -23,6 +23,16 @@ int write_file(const char *path, const void *in, size_t len);
 size_t header_cb_curl(char *p_recv, size_t size, size_t nmemb, void *userdata);
 int get_image(char* url);
 
+
+/**
+ * @brief write callback function to save a copy of received data in RAM.
+ *        The received libcurl data are pointed by p_recv, 
+ *        which is provided by libcurl and is not user allocated memory.
+ *        The user allocated memory is at p_userdata. One needs to
+ *        cast it to the proper struct to make good use of it.
+ *        This function maybe invoked more than once by one invokation of
+ *        curl_easy_perform().
+ */
 size_t write_cb_curl3(char *p_recv, size_t size, size_t nmemb, void *p_userdata)
 {
     size_t realsize = size * nmemb;
@@ -63,6 +73,7 @@ int recv_buf_init(RECV_BUF *ptr, size_t max_size)
     ptr->buf = p;
     ptr->size = 0;
     ptr->max_size = max_size;
+    ptr->seq = -1;              /* valid seq should be non-negative */
     return 0;
 }
 
@@ -81,8 +92,8 @@ int recv_buf_cleanup(RECV_BUF *ptr)
 /**
  * @brief output data in memory to a file
  * @param path const char *, output file path
- * @param in  U8 *, input data to be written to the file
- * @param len U64, length of the input data in bytes
+ * @param in  void *, input data to be written to the file
+ * @param len size_t, length of the input data in bytes
  */
 
 int write_file(const char *path, const void *in, size_t len)
