@@ -1,16 +1,13 @@
-/* Paster single threaded
-*/
-
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdbool.h>
+#include <stdbool.h> /* For boolean type */
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <curl/curl.h>
 #include "utils.c"
 
-
+/* Requests image from the server, if the image seq is new save it to a png file */
 int save_image(char* url, bool* seq_images){
 	CURL *curl_handle;
 	CURLcode res;
@@ -118,21 +115,22 @@ int main(int argc, char** argv){
 		}
 	}
 	
+	/* TODO Create threads to do this part */
 	/* Keep requesting for images until all images are saved */
 	while(array_sum(seq_images, NUM_IMAGES) != NUM_IMAGES){
 		save_image(url, seq_images);
 	}
+	
 
+	/* Concat images using the previously built catpng program */
 	size_t size = sizeof("output_?.png ");	
 	char param[NUM_IMAGES * size];
 	int pos = 0;
-
 	for(int i=0; i < NUM_IMAGES; i++){
 		pos += sprintf(&param[pos], "output_%d.png ", i);
 	}
 	
 	char* cmd = concat("./catpng.out ", param);
-	/* Concat images using the previously built concat program */
 	system(cmd);
 	
 	free(cmd);
