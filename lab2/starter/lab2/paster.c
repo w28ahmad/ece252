@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -10,12 +11,12 @@
 #include "utils.c"
 
 
-int save_image(char* url){
+int save_image(char* url, bool* seq_images){
 	CURL *curl_handle;
 	CURLcode res;
 	RECV_BUF recv_buf;
 	char fname[256];
-	pid_t pid =getpid();
+	//pid_t pid =getpid();
 
 	recv_buf_init(&recv_buf, BUF_SIZE);
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -53,9 +54,15 @@ int save_image(char* url){
 		printf("%lu bytes received in memory %p, seq=%d.\n", \
 			recv_buf.size, recv_buf.buf, recv_buf.seq);
     }
-
-    sprintf(fname, "./output_%d_%d.png", recv_buf.seq, pid);
-    write_file(fname, recv_buf.buf, recv_buf.size);
+	
+	/* Save the image if not already saved */
+	if(seq_images[recv_buf.seq] == 0){
+    	sprintf(fname, "./output_%d.png", recv_buf.seq);
+    	write_file(fname, recv_buf.buf, recv_buf.size);
+		seq_images[recv_buf.seq] = 1;
+	}else{
+		printf("seq %d already exists\n", recv_buf.seq);
+	}
 
     /* cleaning up */
     curl_easy_cleanup(curl_handle);
@@ -64,8 +71,18 @@ int save_image(char* url){
 	return 0;
 }
 
+int array_sum(bool* seq_images, int size){
+	int res=0;
+	for(int i=0; i < size; i++){
+		res+= (int)seq_images[i];
+	}
+	return res;
+}
+
 int main(int argc, char** argv){
-	char* url = IMG_URL_1;
+	char* url = IMG_URL_1; /* default url */
+	bool seq_images[NUM_IMAGES] = { 0 };
+
 	/* Get arguments */
 	int c;
 	int t = 1;
@@ -100,8 +117,24 @@ int main(int argc, char** argv){
 				return -1;
 		}
 	}
+	
+	/* Keep requesting for images until all images are saved */
+	while(array_sum(seq_images, NUM_IMAGES) != NUM_IMAGES){
+		save_image(url, seq_images);
+	}
 
-	/* printf("%s %i", url, t); */
-	save_image(url);
+	size_t size = sizeof("output_?.png ");	
+	char param[NUM_IMAGES * size];
+	int pos = 0;
+
+	for(int i=0; i < NUM_IMAGES; i++){
+		pos += sprintf(&param[pos], "output_%d.png ", i);
+	}
+	
+	char* cmd = concat("./catpng.out ", param);
+	/* Concat images using the previously built concat program */
+	system(cmd);
+	
+	free(cmd);
 	return 0;
 }

@@ -15,17 +15,10 @@
 /******************************************************************************
  * DEFINED MACROS 
  *****************************************************************************/
-
-#define PNG_SIG_SIZE    8 /* number of bytes of png image signature data */
-#define CHUNK_LEN_SIZE  4 /* chunk length field size in bytes */          
-#define CHUNK_TYPE_SIZE 4 /* chunk type field size in bytes */
-#define CHUNK_CRC_SIZE  4 /* chunk CRC field size in bytes */
-#define DATA_IHDR_SIZE 13 /* IHDR chunk data field size */
-
+#define NUM_IMAGES 50	  /* 50 cropped images */
 #define BUF_SIZE 1048576  /* 1024*1024 = 1M */
 #define BUF_INC  524288   /* 1024*512  = 0.5M */
 #define ECE252_HEADER "X-Ece252-Fragment: "
-
 
 #define max(a, b) \
    ({ __typeof__ (a) _a = (a); \
