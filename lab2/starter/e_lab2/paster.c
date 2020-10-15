@@ -17,7 +17,6 @@ int save_image(char* url, bool* seq_images){
 	//pid_t pid =getpid();
 
 	recv_buf_init(&recv_buf, BUF_SIZE);
-    curl_global_init(CURL_GLOBAL_DEFAULT);
 
     /* init a curl session */
     curl_handle = curl_easy_init();
@@ -51,20 +50,20 @@ int save_image(char* url, bool* seq_images){
     } else {
 		printf("%lu bytes received in memory %p, seq=%d.\n", \
 			recv_buf.size, recv_buf.buf, recv_buf.seq);
-    }
-	
+
+	}		    
 	/* Save the image if not already saved */
 	if(seq_images[recv_buf.seq] == 0){
     	sprintf(fname, "./output_%d.png", recv_buf.seq);
     	write_file(fname, recv_buf.buf, recv_buf.size);
 		seq_images[recv_buf.seq] = 1;
 	}else{
-		printf("seq %d already exists\n", recv_buf.seq);
+		printf("seq %d already exists\n", recv_buf.seq);	
 	}
 
     /* cleaning up */
     curl_easy_cleanup(curl_handle);
-    curl_global_cleanup();
+
     recv_buf_cleanup(&recv_buf);
 	return 0;
 }
@@ -137,7 +136,8 @@ int main(int argc, char** argv){
 		}
 	}
 
-	/* TODO Create threads to do this part */
+	/* Create threads to get image segments */
+	curl_global_init(CURL_GLOBAL_DEFAULT);
 	pthread_t *p_tids = malloc(sizeof(pthread_t) * t);
     struct thread_args in_params;
     struct thread_ret *p_results[t];
@@ -153,8 +153,9 @@ int main(int argc, char** argv){
 
     for (int i = 0; i < t; i++) {
         pthread_join(p_tids[i], (void **)&(p_results[i]));
-        printf("Thread ID %lu joined.\n", p_tids[i]);
+        printf("Thread ID %lu joined.\n", p_tids[i]);		
     }
+	curl_global_cleanup();
 
     /* cleaning up */
 
