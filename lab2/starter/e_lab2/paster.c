@@ -165,7 +165,7 @@ int main(int argc, char** argv){
     for (int i = 0; i < t; i++) {
         free(p_results[i]);
     }
-
+	pthread_mutex_destroy(&lock);
 
 	/* Concat images using the previously built catpng program */
 	size_t size = sizeof("output_?.png ");	
