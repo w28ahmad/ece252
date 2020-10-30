@@ -4,13 +4,19 @@
  * MACROS
  *********************************************************************/
 #define ECE252_HEADER "X-Ece252-Fragment: "
-#define NUM_SLICES 50
-#define NUM_SEMS 2
-#define SEM_PROC 1
+#define NUM_SLICES 50						/* 50 slices make an image */
+#define SIZE_OF_SLICE 10000					/* Image slice is maximimum of 10000 bytes */
+#define NUM_SEMS 3							/* Number of semaphores */
+/* sem[0] - items
+ * sem[1] - spaces
+ * sem[2] - mutex TODO: may not be needed
+ **/
+#define SEM_PROC 1							/* Boolean to allow shared memory for semaphores */
 #define min(a,b) \
 		({ __typeof__ (a) _a = (a); \
 		 __typeof__ (b) _b = (b); \
 		 _a > _b ? _b : _a; })
+
 /*********************************************************************
  * STRUCTURES
  *********************************************************************/

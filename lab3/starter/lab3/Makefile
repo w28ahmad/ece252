@@ -6,12 +6,10 @@ LDLIBS  = -lcurl -lpthread -lm	# link with libpthread, lm for ceil
 
 SRCS = paster2.c
 OBJS  = paster2.o
-TARGETS = paster2.out
+TARGETS = paster2
 
 all: ${TARGETS}
-paster2.out: ${OBJS}
-	# Clear shared memory
-	./clean_ipcs.sh
+paster2: ${OBJS}
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
 
 %.o: %.c 
@@ -25,6 +23,6 @@ paster2.out: ${OBJS}
 .PHONY: clean
 clean:
 	rm -f *.d *.o *~ $(TARGETS) *.png
-
-
+	# Clear shared memory
+	./clean_ipcs.sh
 

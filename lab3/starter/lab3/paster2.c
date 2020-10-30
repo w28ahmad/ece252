@@ -10,13 +10,22 @@
 #include <string.h>		/* memset */
 #include <math.h>		/* ceil */
 #include <curl/curl.h>
+#include <time.h>		/* rand */
+#include <sys/time.h>
 #include "utils.h"	
 #include "utils.c"		/* starter code */
+#include "shm_stack.h"
+#include "shm_stack.c"  /* Implementation of a stack */
 
-#define SIZE_OF_SLICE 10000
-
-/* @param start, end - range of slices to curl */
-int produce(int img_num, int start, int end){
+/* @brief produce the images in slices according to a range set by start and end
+ * @param imp_num - which image to produce
+ * @param start, end - range of image slices, (given in equal intervals to each producer)
+ * @param pstack - Shared stack of size B, SLICE(data, seq, size) are pushed by producers
+ * @param items - items semaphore, number of items on the stack
+ * @param spaces - spaces semaphore, number of spaces on the stack
+ * @param mutex	- TODO remove if not needed
+ **/
+int produce(int img_num, int start, int end, struct buf_stack* pstack, sem_t* items, sem_t* spaces, sem_t* mutex){
 		char* url = (char*)malloc(50*sizeof(char));
 
 		/* init a curl session */
@@ -30,8 +39,10 @@ int produce(int img_num, int start, int end){
 		for(int i=start; i < end; i++){
 				/* Generate url */
 				memset(url, 0, 50*sizeof(char));
-				sprintf(url, "http://ece252-1.uwaterloo.ca:2520/image?img=%d&part=%d", img_num, i);
-				
+				int server_type = 1+(rand()%3); /* random number from 1 to 3 */
+				sprintf(url, "http://ece252-%d.uwaterloo.ca:2520/image?img=%d&part=%d", 
+								server_type, img_num, i);
+
 				/* Data structure to store the slices */
 				int shm_size = sizeof_shm_recv_buf(SIZE_OF_SLICE);
 				RECV_BUF* p_shm_recv_buf=(RECV_BUF*)malloc(shm_size);
@@ -57,12 +68,30 @@ int produce(int img_num, int start, int end){
 				if( res != CURLE_OK) {
 						fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 				} else {
-						printf("%lu bytes received in memory %p, seq=%d.\n", \
+						printf("%lu bytes produced in memory %p, seq=%d.\n", \
 										p_shm_recv_buf->size, \
 										p_shm_recv_buf->buf, \
 										p_shm_recv_buf->seq);
 				}
 
+				/* Critical section */
+				if(sem_wait(spaces) != 0){
+						perror("sem_wait on spaces");
+						abort();
+				}
+
+				//sem_wait(mutex);
+				/* add data to stack */
+				int ret = push(pstack, p_shm_recv_buf->seq, p_shm_recv_buf->buf, p_shm_recv_buf->size);
+				if ( ret != 0 ) {
+						perror("push");
+						return 1;
+				}
+				if(sem_post(items) != 0){
+						perror("sem_post on items");
+						abort();
+				}
+				//sem_post(mutex);
 				free(p_shm_recv_buf);
 		}
 		/* cleaning up */
@@ -71,6 +100,41 @@ int produce(int img_num, int start, int end){
 		free(url);
 		return 0;
 }
+
+
+/* @brief consume the image slices on the stack
+ * @param items_to_consume - number of slices to consume, equally spread to the C consumers
+ * @param pstack - Shared stack of size B, SLICE(data, seq, size) are pushed by producers
+ * @param items - items semaphore, number of items on the stack
+ * @param spaces - spaces semaphore, number of spaces on the stack
+ * @param mutex	- TODO remove if not needed
+ **/
+int consume(int sleep_delay, int items_to_consume, struct buf_stack* pstack, sem_t* items, sem_t* spaces, sem_t* mutex){
+		int i=0;
+		while(i < items_to_consume){	
+				usleep(sleep_delay*1000); /* Micro to mili */
+				/* Critical Section */
+				sem_wait(items);
+
+				/* Read the stack */
+				SLICE data;
+				int ret = pop(pstack, &data);
+				if(ret != 0){
+						perror("pop");
+						return 1;
+				}
+
+				/* TODO: organize the data so the parent can merge the images
+				 * data holds information recieved by the producers
+				 * data.seq- seq number, data.buf- png data, data.size- size of the data
+				 **/
+				printf("%d bytes consumed, seq=%d\n", (int)data.size, data.seq);
+				sem_post(spaces);
+				i++;
+		}
+		return 0;	
+}
+
 
 int main(int argc, char** argv){
 		if(argc != 6){
@@ -84,11 +148,24 @@ int main(int argc, char** argv){
 		int X=strtoul(argv[4], NULL, 10);	/* # of ms sleeps before it starts (FOR CONSUMER)*/
 		int N=strtoul(argv[5], NULL, 10);	/* Image number, must be from 1-3 */
 
-		//RECV_BUF* p_shm_recv_buf;
-		//int shm_size = sizeof_shm_recv_buf(B);
-		//int shmid;
+		/* Start the timer */
+		double times[2];
+		struct timeval tv;
 
-		/* allocate shared memory for semaphore and RECV_BUF */
+		if (gettimeofday(&tv, NULL) != 0) {
+				perror("gettimeofday");
+				abort();
+		}
+		times[0] = (tv.tv_sec) + tv.tv_usec/1000000.;
+
+
+		srand(time(NULL)); /* For rand() */
+
+		/* Shared memory for stack */
+		int shmid;
+		int shm_size = sizeof_shm_stack(B);
+
+		/* allocate shared memory for semaphore and stack */
 		sem_t* sems;
 		int shmid_sems = shmget(IPC_PRIVATE, 
 						sizeof(sem_t) * NUM_SEMS, 
@@ -98,31 +175,42 @@ int main(int argc, char** argv){
 				perror("shmget");
 				abort();
 		}
-		//shmid = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-		//if ( shmid == -1 ) {
-		//	perror("shmget");
-		//	abort();
-		//}
+		shmid = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+		if ( shmid == -1 ) {
+				perror("shmget");
+				abort();
+		}
 
 
-		/* attach shared memory for semaphorei and RECV_BUF */
+		/* attach shared memory for semaphore and stack */
 		sems = (sem_t*)shmat(shmid_sems, NULL, 0);
 		if ( sems == (void *) -1 ) {
 				perror("shmat");
 				abort();
 		}
-		//p_shm_recv_buf = (RECV_BUF*)shmat(shmid, NULL, 0);
+		struct buf_stack* pstack;
+		pstack = (struct buf_stack*)shmat(shmid, NULL, 0);
 
 		/* initialize shared memory varaibles */
-		if ( sem_init(&sems[0], SEM_PROC, 1) != 0 ) {
+		init_shm_stack(pstack, B);
+
+		/* Items semaphore */
+		if ( sem_init(&sems[0], SEM_PROC, 0) != 0 ) {
 				perror("sem_init(sem[0])");
 				abort();
 		}
-		if ( sem_init(&sems[1], SEM_PROC, 1) != 0 ) {
+		/* Spaces semaphore */
+		if ( sem_init(&sems[1], SEM_PROC, B) != 0 ) {
 				perror("sem_init(sem[1])");
 				abort();
 		}
-		//shm_recv_buf_init(p_shm_recv_buf, B);
+		/* Mutex semaphore */
+		/* TODO: not sure if I will need mutex, If not remove */
+		if ( sem_init(&sems[2], SEM_PROC, 1) != 0 ) {
+				perror("sem_init(sem[2])");
+				abort();
+		}
+
 
 		/* Create P producers */
 		pid_t p_pid[P];
@@ -133,10 +221,22 @@ int main(int argc, char** argv){
 						perror("fork");
 						abort();
 				}else if(p_pid[i] == 0){
-						produce(N, i*slice, min((i+1)*slice, 50));
+						produce(N,						/* Image number */ 
+										i*slice, 				/* Starting slice of image */
+										min((i+1)*slice, 50), 	/* Ending slice of image */
+										pstack, 				/* Shared stack between prod. and cons. */
+										&sems[0], 				/* Items sem */
+										&sems[1], 				/* Space sem */
+										&sems[2]				/* Mutex sem */
+							   );
 
 						/* detach the semaphore memory */
 						if ( shmdt(sems) != 0 ) {
+								perror("shmdt");
+								abort();
+						}
+						/* detach stack memory */
+						if ( shmdt(pstack) != 0 ) {
 								perror("shmdt");
 								abort();
 						}
@@ -145,6 +245,7 @@ int main(int argc, char** argv){
 		}
 
 		/* Create C consumers */
+		slice = (int)ceil((double)NUM_SLICES/C);
 		pid_t c_pid[C];
 		for(int i=0; i < C; i++){
 				if ((c_pid[i] = fork()) < 0) {
@@ -152,10 +253,21 @@ int main(int argc, char** argv){
 						abort();
 				}else if(c_pid[i] == 0){
 						/* Consume stuff here */
-						printf("I am a C\n");
-
+						int items_to_consume = min((i+1)*slice, 50) - i*slice;
+						consume(X,
+										items_to_consume,	/* How many items to consume per consumer*/
+										pstack, 
+										&sems[0],
+										&sems[1],
+										&sems[2]
+							   );
 						/* detach the semaphore memory */
 						if ( shmdt(sems) != 0 ) {
+								perror("shmdt");
+								abort();
+						}
+						/* detach stack memory */
+						if ( shmdt(pstack) != 0 ) {
 								perror("shmdt");
 								abort();
 						}
@@ -166,10 +278,24 @@ int main(int argc, char** argv){
 		/* Parent */
 		int status=0;
 		while( (waitpid(-1, &status, 0)) > 0);	/* wait for all children */
-		printf("I am parent\n");
+
+		/* TODO: Merge the images into an all.png file */
+		printf("I am the parent\n");
 
 		/* Cleanup */
 		curl_global_cleanup();
+
+		/* detach stack memory */
+		if ( shmdt(pstack) != 0 ) {
+				perror("shmdt");
+				abort();
+		}
+
+		/* Remove stack memory */
+		if ( shmctl(shmid, IPC_RMID, NULL) == -1 ) {
+				perror("shmctl");
+				abort();
+		}
 
 		/* detach the semaphore memory */
 		if ( shmdt(sems) != 0 ) {
@@ -183,11 +309,19 @@ int main(int argc, char** argv){
 				abort();
 		}
 
-		/* Destroy Semaphore */
-		if (sem_destroy(&sems[0]) || sem_destroy(&sems[1])) {
+		/* Destroy Semaphores */
+		if (sem_destroy(&sems[0]) || sem_destroy(&sems[1]) || sem_destroy(&sems[2])) {
 				perror("sem_destroy");
 				abort();
 		}
+
+		/* Stop the timer */
+		if (gettimeofday(&tv, NULL) != 0) {
+				perror("gettimeofday");
+				abort();
+		}
+		times[1] = (tv.tv_sec) + tv.tv_usec/1000000.;
+		printf("paster2 execution time: %.2lf seconds\n", times[1] - times[0]);
 
 		return 0;
 }	
