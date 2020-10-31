@@ -226,7 +226,6 @@ int main(int argc, char** argv){
 						perror("fork");
 						abort();
 				}else if(p_pid[i] == 0){
-					printf("START NUMBER: %d END NUMBER: %d\n", i*slice, min((i+1)*slice, 50));
 						produce(N,						/* Image number */ 
 										i*slice, 				/* Starting slice of image */
 										min((i+1)*slice, 50), 	/* Ending slice of image */
@@ -332,6 +331,16 @@ int main(int argc, char** argv){
 		char* cmd = concat("./catpng ", param);
 		system(cmd);
 		free(cmd);
+
+		/* Remove png slice files */
+		char filename[64];
+		for (int i = 0; i < NUM_SLICES; i++) {
+			sprintf(filename, "output_%d.png", i);
+			if (remove(filename) != 0) {
+				perror("remove");
+				abort();
+			}
+		}
 
 
 		/* Stop the timer */
