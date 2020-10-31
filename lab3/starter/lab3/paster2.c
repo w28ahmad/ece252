@@ -40,7 +40,7 @@ int produce(int img_num, int start, int end, struct buf_stack* pstack, sem_t* it
 				/* Generate url */
 				memset(url, 0, 50*sizeof(char));
 				int server_type = 1+(rand()%3); /* random number from 1 to 3 */
-				sprintf(url, "http://ece252-%d.uwaterloo.ca:2520/image?img=%d&part=%d", 
+				sprintf(url, "http://ece252-%d.uwaterloo.ca:2530/image?img=%d&part=%d", 
 								server_type, img_num, i);
 
 				/* Data structure to store the slices */
@@ -68,11 +68,11 @@ int produce(int img_num, int start, int end, struct buf_stack* pstack, sem_t* it
 				if( res != CURLE_OK) {
 						fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 				} else {
-						printf("%lu bytes produced in memory %p, seq=%d for request %d.\n", \
+/*						printf("%lu bytes produced in memory %p, seq=%d for request %d.\n", \
 										p_shm_recv_buf->size, \
 										p_shm_recv_buf->buf, \
-										p_shm_recv_buf->seq,
-										i);
+										p_shm_recv_buf->seq, \
+										i);	*/
 				}
 
 				/* Critical section */
@@ -81,9 +81,9 @@ int produce(int img_num, int start, int end, struct buf_stack* pstack, sem_t* it
 						abort();
 				}
 
-				sem_wait(mutex);
 				/* add data to stack */
-				int ret = push(pstack, i, p_shm_recv_buf->buf, p_shm_recv_buf->size);
+				sem_wait(mutex);
+				int ret = push(pstack, p_shm_recv_buf->seq, p_shm_recv_buf->buf, p_shm_recv_buf->size);
 				if ( ret != 0 ) {
 						perror("push");
 						return 1;
@@ -110,9 +110,8 @@ int produce(int img_num, int start, int end, struct buf_stack* pstack, sem_t* it
  * @param spaces - spaces semaphore, number of spaces on the stack
  * @param mutex	- TODO remove if not needed
  **/
-int consume(int sleep_delay, int items_to_consume, struct buf_stack* pstack, sem_t* items, sem_t* spaces, sem_t* mutex, int start){
+int consume(int sleep_delay, int items_to_consume, struct buf_stack* pstack, sem_t* items, sem_t* spaces, sem_t* mutex){
 		int i=0;
-		int count = start;
 		//int seq_images[NUM_SLICES] = { 0 };
 		char fname[256];
 		while(i < items_to_consume){	
@@ -121,28 +120,21 @@ int consume(int sleep_delay, int items_to_consume, struct buf_stack* pstack, sem
 				sem_wait(items);
 
 				/* Read the stack */
+				sem_wait(mutex);
 				SLICE data;
 				int ret = pop(pstack, &data);
 				if(ret != 0){
 						perror("pop");
 						return 1;
 				}
-
-				/* TODO: organize the data so the parent can merge the images
-				 * data holds information recieved by the producers
-				 * data.seq- seq number, data.buf- png data, data.size- size of the data
-				 **/
-				sem_wait(mutex);
-				//printf("%d bytes consumed, seq=%d\n", (int)data.size, data.seq);
-				//if(seq_images[data.seq] == 0){
-					printf("./output_%d.png\n", count);
-					sprintf(fname, "./output_%d.png", count); // data.seq instead of i
-					write_file(fname, data.buf, (int)data.size);
-				//	seq_images[data.seq] = 1;
-				//}
 				sem_post(mutex);
+				/* data holds information recieved by the producers
+				 * data.seq- seq number, data.buf- png data, data.size- size of the data
+				 */
+				/* Create a file of the slice */
+				sprintf(fname, "./output_%d.png", data.seq);
+				write_file(fname, data.buf, (int)data.size);
 				sem_post(spaces);
-				count++;
 				i++;
 		}
 		return 0;	
@@ -267,18 +259,13 @@ int main(int argc, char** argv){
 						abort();
 				}else if(c_pid[i] == 0){
 						/* Consume stuff here */
-						int start = 0;
 						int items_to_consume = min((i+1)*slice, 50) - i*slice;
-						for (int j = 0; j < i; j++) {
-							start += min((j+1)*slice, 50) - j*slice;
-						}
 						consume(X,
 										items_to_consume,	/* How many items to consume per consumer*/
 										pstack, 
 										&sems[0],
 										&sems[1],
-										&sems[2],
-										start
+										&sems[2]
 							   );
 						/* detach the semaphore memory */
 						if ( shmdt(sems) != 0 ) {
@@ -298,8 +285,7 @@ int main(int argc, char** argv){
 		int status=0;
 		while( (waitpid(-1, &status, 0)) > 0);	/* wait for all children */
 
-		/* TODO: Merge the images into an all.png file */
-		printf("I am the parent\n");
+		/* Merge the images into an all.png file */
 
 		/* Cleanup */
 		curl_global_cleanup();
