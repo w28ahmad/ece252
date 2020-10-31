@@ -85,7 +85,7 @@ int init_shm_stack(ISTACK *p, int stack_size)
 
     p->size = stack_size;
     p->pos  = -1;
-    p->items = (SLICE *) (p + sizeof(ISTACK));
+    p->items = (SLICE *) ((char*)p + sizeof(ISTACK));
     return 0;
 }
 

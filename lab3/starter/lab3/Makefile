@@ -31,4 +31,4 @@ clean:
 	rm -f *.d *.o *~ $(TARGETS) *.png
 	# Clear shared memory
 	chmod +x clean_ipcs.sh
-
+	./clean_ipcs.sh
