@@ -68,10 +68,11 @@ int produce(int img_num, int start, int end, struct buf_stack* pstack, sem_t* it
 				if( res != CURLE_OK) {
 						fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 				} else {
-						printf("%lu bytes produced in memory %p, seq=%d.\n", \
+						printf("%lu bytes produced in memory %p, seq=%d for request %d.\n", \
 										p_shm_recv_buf->size, \
 										p_shm_recv_buf->buf, \
-										p_shm_recv_buf->seq);
+										p_shm_recv_buf->seq,
+										i);
 				}
 
 				/* Critical section */
@@ -80,18 +81,18 @@ int produce(int img_num, int start, int end, struct buf_stack* pstack, sem_t* it
 						abort();
 				}
 
-				//sem_wait(mutex);
+				sem_wait(mutex);
 				/* add data to stack */
-				int ret = push(pstack, p_shm_recv_buf->seq, p_shm_recv_buf->buf, p_shm_recv_buf->size);
+				int ret = push(pstack, i, p_shm_recv_buf->buf, p_shm_recv_buf->size);
 				if ( ret != 0 ) {
 						perror("push");
 						return 1;
 				}
+				sem_post(mutex);
 				if(sem_post(items) != 0){
 						perror("sem_post on items");
 						abort();
 				}
-				//sem_post(mutex);
 				free(p_shm_recv_buf);
 		}
 		/* cleaning up */
@@ -109,8 +110,11 @@ int produce(int img_num, int start, int end, struct buf_stack* pstack, sem_t* it
  * @param spaces - spaces semaphore, number of spaces on the stack
  * @param mutex	- TODO remove if not needed
  **/
-int consume(int sleep_delay, int items_to_consume, struct buf_stack* pstack, sem_t* items, sem_t* spaces, sem_t* mutex){
+int consume(int sleep_delay, int items_to_consume, struct buf_stack* pstack, sem_t* items, sem_t* spaces, sem_t* mutex, int start){
 		int i=0;
+		int count = start;
+		//int seq_images[NUM_SLICES] = { 0 };
+		char fname[256];
 		while(i < items_to_consume){	
 				usleep(sleep_delay*1000); /* Micro to mili */
 				/* Critical Section */
@@ -128,8 +132,17 @@ int consume(int sleep_delay, int items_to_consume, struct buf_stack* pstack, sem
 				 * data holds information recieved by the producers
 				 * data.seq- seq number, data.buf- png data, data.size- size of the data
 				 **/
-				printf("%d bytes consumed, seq=%d\n", (int)data.size, data.seq);
+				sem_wait(mutex);
+				//printf("%d bytes consumed, seq=%d\n", (int)data.size, data.seq);
+				//if(seq_images[data.seq] == 0){
+					printf("./output_%d.png\n", count);
+					sprintf(fname, "./output_%d.png", count); // data.seq instead of i
+					write_file(fname, data.buf, (int)data.size);
+				//	seq_images[data.seq] = 1;
+				//}
+				sem_post(mutex);
 				sem_post(spaces);
+				count++;
 				i++;
 		}
 		return 0;	
@@ -221,6 +234,7 @@ int main(int argc, char** argv){
 						perror("fork");
 						abort();
 				}else if(p_pid[i] == 0){
+					printf("START NUMBER: %d END NUMBER: %d\n", i*slice, min((i+1)*slice, 50));
 						produce(N,						/* Image number */ 
 										i*slice, 				/* Starting slice of image */
 										min((i+1)*slice, 50), 	/* Ending slice of image */
@@ -253,13 +267,18 @@ int main(int argc, char** argv){
 						abort();
 				}else if(c_pid[i] == 0){
 						/* Consume stuff here */
+						int start = 0;
 						int items_to_consume = min((i+1)*slice, 50) - i*slice;
+						for (int j = 0; j < i; j++) {
+							start += min((j+1)*slice, 50) - j*slice;
+						}
 						consume(X,
 										items_to_consume,	/* How many items to consume per consumer*/
 										pstack, 
 										&sems[0],
 										&sems[1],
-										&sems[2]
+										&sems[2],
+										start
 							   );
 						/* detach the semaphore memory */
 						if ( shmdt(sems) != 0 ) {
@@ -314,6 +333,20 @@ int main(int argc, char** argv){
 				perror("sem_destroy");
 				abort();
 		}
+
+		/* Concat images using the previously built catpng program */
+		
+		size_t size = sizeof("output_?.png ");	
+		char param[NUM_SLICES * size];
+		int pos = 0;
+		for(int i=0; i < NUM_SLICES; i++){
+			pos += sprintf(&param[pos], "output_%d.png ", i);
+		}
+		
+		char* cmd = concat("./catpng ", param);
+		system(cmd);
+		free(cmd);
+
 
 		/* Stop the timer */
 		if (gettimeofday(&tv, NULL) != 0) {
