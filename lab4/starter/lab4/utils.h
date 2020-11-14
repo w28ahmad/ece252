@@ -1,15 +1,14 @@
 #pragma once
 
-
 /*****************************************************
  * MACROS
  *****************************************************/
-
-#define HASH_TABLE_SIZE 200
+#define PNG_SIG_SIZE    8 		/* number of bytes of png image signature data */
+#define HASH_TABLE_SIZE 500		/* Cannot allocate memory in output implies, hashtable size is not large enough */
 #define SEED_URL "http://ece252-1.uwaterloo.ca/lab4/"
 #define ECE252_HEADER "X-Ece252-Fragment: "
-#define BUF_SIZE 1048576  /* 1024*1024 = 1M */
-#define BUF_INC  524288   /* 1024*512  = 0.5M */
+#define BUF_SIZE 1048576  		/* 1024*1024 = 1M */
+#define BUF_INC  524288   		/* 1024*512  = 0.5M */
 #define PNG_LOGFILE "png_urls.txt"
 
 #define CT_PNG  "image/png"
@@ -24,8 +23,9 @@
 
 
 /*********************************************************
- * STRUCTURES
+ * STRUCTURES & TYPEDEF
  *********************************************************/
+typedef unsigned char U8;
 typedef struct recv_buf2 {
     char *buf;       /* memory to hold a copy of received data */
     size_t size;     /* size of valid data in buf in bytes*/

@@ -9,22 +9,67 @@
 #include <libxml/xpath.h>
 #include <libxml/uri.h>
 #include <search.h> /* hashmap */
-#include <stdint.h>  /* intptr_t */
-
+#include <errno.h>
 #include "utils.h"
 #include "utils.c"
 
 #define DEBUG printf("D\n");
 
+extern int errno;
+
+/* FEW NOTES
+ * 
+ * RESULTS = List of Unique PNG files that creates png_urls.txt file
+ * VISITED = List of URLs the web crawler has seen
+ * FRONTIER = List of URLs that are pending to be visited.
+ *
+ * Currently items of these lists are all inside urls[]
+ * urls-> [url_1, url_2, url_3, url_4, url_6, ..., url_n]
+ * 			 ^					  ^					 ^
+ *			 0					  i					 n
+ * urls[0..i] is the visited list
+ * urls[i+1..n] is the frontier list
+ * where i the url the crawler is currently on
+ * The multithreaded version may need these lists seperated (not sure)
+ *
+ * Currently I am not storing RESULTS in a list, they are being written straight to png_urls.txt directly
+ *
+ * BUGS
+ * I have seen 1 or 2 duplicate urls in url logfile, but those duplicates only occur from 1 or 2 specific urls
+ * you can vew duplicate lines in a txt file using the following command
+ * sort <filename>  | uniq -d
+ *
+ * If the hashtable is not large enough you might see entry errors. Currently the hashtable is set to 500 entries
+ */ 
+
+
+
 /* create a hashtable */
 ENTRY slot;
 char* urls[HASH_TABLE_SIZE];
-char* url_logfile=NULL; 
+
+/* Global Vars */
 int url_count=0; 
 int png_count=0;
+FILE* png_log_file;
 
 void print_hashmap();
 
+int is_png(U8 *buf, size_t n){
+		U8 SIGNATURE[PNG_SIG_SIZE] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+		if (memcmp(SIGNATURE, buf, n)){
+				return 0;
+		}
+		return 1;
+}
+
+/* @brief: adds url to hashmap: 
+ * key      value
+ * url----> NULL
+ *
+ * Notes: If the size of the hashmap is not large enough, cannot allocate memory will show in the output
+ *		  If the hashmap becomes full there will also be an Entry erroor
+ */
 int add_url_to_map(char* url){
 		slot.key=url;
 		slot.data = NULL;
@@ -40,22 +85,21 @@ int add_url_to_map(char* url){
 				/* Add the data to the table */
 				ENTRY* result = hsearch(slot, ENTER);
 				if (result == NULL) {
-						fprintf(stderr, "entry failed\n");
+						int errornum = errno;
+						fprintf(stderr, "Entry error: %s\n", strerror( errornum ));
+						free(urls[url_count]);
+						url_count--;
 						return 1;
 				}
 
-				/* Add urls to url_logfile if needed */
-				if(url_logfile != NULL){
-					FILE* fp;
-					fp=fopen(url_logfile, "a");
-					fprintf(fp, "%s\n", url);
-					fclose(fp);
-				}
 
 		}
 		return 0;
 }
 
+/* I commented the write file becuase it was not needed in single threaded version
+ * It might be useful in the multithreaded version.
+ */
 int process_html(CURL *curl_handle, RECV_BUF *p_recv_buf)
 {
 		//char fname[256];
@@ -73,6 +117,7 @@ int process_html(CURL *curl_handle, RECV_BUF *p_recv_buf)
 		return 0;
 }
 
+/* Commented write file for the same reason */
 int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 {
 		//pid_t pid =getpid();
@@ -81,14 +126,18 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 		curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &eurl);
 
 		if ( eurl != NULL) {
-				png_count++;
-				printf("PNG url found: %s\n", eurl);
-
-				/* save url to log file */
-				FILE* png_file;
-				png_file=fopen(PNG_LOGFILE, "a");
-				fprintf(png_file, "%s\n", eurl);
-				fclose(png_file);
+				/* Validate the the image has a png signature */
+				U8* buf=(U8*)malloc(sizeof(U8)*PNG_SIG_SIZE);
+				memcpy(buf, p_recv_buf->buf, sizeof(U8)*PNG_SIG_SIZE);
+				if(is_png(buf, sizeof(U8)*PNG_SIG_SIZE)){
+						png_count++;
+						printf("Adding PNG\n");
+						/* save url to log file */
+						fprintf(png_log_file, "%s\n", eurl);
+				}else{
+					printf("Invalid PNG\n");
+				}
+				free(buf);
 		}		
 
 		/*
@@ -97,6 +146,8 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 		   */
 		return 0;
 }
+
+
 /**
  * @brief process teh download data by curl
  * @param CURL *curl_handle is the curl handler
@@ -117,7 +168,7 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 		}
 
 		if ( response_code >= 400 ) { 
-				fprintf(stderr, "Error.\n");
+				fprintf(stderr, "Error. Respose Code: %ld\n", response_code);
 				return 1;
 		}
 
@@ -135,6 +186,11 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 		} else if ( strstr(ct, CT_PNG) ) {
 				return process_png(curl_handle, p_recv_buf);
 		} 
+		
+		/* If the data is for instance jpeg data
+		 * the following code will write it to a file 
+		 */
+		
 		/*else {
 		  sprintf(fname, "./output_%d", pid);
 		  }
@@ -143,6 +199,7 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 		return 0;
 }
 
+/* Prints the hashmap */
 void print_hashmap(){
 		ENTRY* result;
 		for(int i=0; i < url_count; i++){
@@ -152,7 +209,6 @@ void print_hashmap(){
 				printf("%s ----> %s\n",
 								result ? result->key : "NULL", result ? (char*)(result->data) : 0);
 		}	
-
 }
 
 int main( int argc, char** argv ) 
@@ -186,8 +242,6 @@ int main( int argc, char** argv )
 								return -1;
 				}
 		}
-
-
 		char url[256];
 		strcpy(url, argv[argc-1]);
 
@@ -201,13 +255,15 @@ int main( int argc, char** argv )
 		}
 		times[0] = (tv.tv_sec) + tv.tv_usec/1000000.;
 
-		/* Establish a global url_logfile */
+		/* Create a logfile for all urls and png urls*/
+		FILE* logfile;
 		if(v != NULL){
-			url_logfile = v;
+				logfile=fopen(v, "a");
 		}
+		png_log_file=fopen(PNG_LOGFILE, "a");
 
 		/* Initialize hash table */
-		/* TODO hashtable size is hardcoded, might create a bottleneck */
+		/* Note: hashtable size is hardcoded, this create issues if you are searching */
 		hcreate(HASH_TABLE_SIZE);	
 
 		/* Add the initial link to the map */
@@ -223,24 +279,20 @@ int main( int argc, char** argv )
 		/* url_count will be incrementing inside the loop each time a url is found */
 		for(int i=0; i < url_count; i++){
 				strcpy(url, urls[i]);
-				printf("%s: URL is %s\n", argv[0], url);
-
+				//printf("%s: URL is %s\n", argv[0], url);
+				
 				curl_handle = easy_handle_init(&recv_buf, url);
 
 				if ( curl_handle == NULL ) {
 						fprintf(stderr, "Curl initialization failed. Exiting...\n");
-						curl_global_cleanup();
-						abort();
+						break;
 				}
 				/* get the data */
 				res = curl_easy_perform(curl_handle);
 
 				if( res != CURLE_OK) {
-						/*
-						   fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-						   cleanup(curl_handle, &recv_buf);
-						   exit(1);
-						   */
+						curl_easy_cleanup(curl_handle);
+						recv_buf_cleanup(&recv_buf);
 						continue;
 				} 
 
@@ -254,16 +306,30 @@ int main( int argc, char** argv )
 				/* Find the links in the html */
 				process_data(curl_handle, &recv_buf);
 
+				/* Add urls to url_logfile if needed */
+				if(v != NULL){
+						fprintf(logfile, "%s\n", url);
+				}
+				curl_easy_cleanup(curl_handle);
+				recv_buf_cleanup(&recv_buf);
 				if(png_count >= m)
 						break;
 		}
-		print_hashmap();
+
+		/* url ---> NULL */
+		/* print_hashmap(); */
+		
+		/* Close the logfiles */
+		if(v != NULL)
+				fclose(logfile);
+		fclose(png_log_file);
+		curl_global_cleanup();
+
 
 		/* cleaning up */
 		for(int i=0; i < url_count; i++){
 				free(urls[i]);
 		}
-		cleanup(curl_handle, &recv_buf);
 		hdestroy();
 
 		/* Stop the timer */

@@ -25,6 +25,19 @@ findpng2: $(OBJS3)
 
 -include $(SRCS:.c=.d)
 
+# Sample test
+test1:
+	# Note: 
+	# if -m is too high, the hashtable might not behave properly
+	# It seems to be very sensitive to data collisions
+	# "cannot allocate memory" output implies hashtable is not large enough
+	./findpng2 -t 10 -m 20 -v "log.txt" http://ece252-1.uwaterloo.ca/lab4 > output.txt
+	# if the follow 2 commands output any lines something is wrong
+	# Since the output will indicades duplicate links in a file
+	# TODO: log.txt sometimes has a duplicate. Have not found a fix yet.
+	sort log.txt  | uniq -d
+	sort png_urls.txt  | uniq -d
+
 .PHONY: clean
 clean:
 	rm -f *~ *.d *.o $(TARGETS) *.png *.html *.txt
