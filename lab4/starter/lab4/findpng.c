@@ -108,18 +108,16 @@ int add_url_to_map(char* url){
 						fprintf(stderr, "Entry error: %s\n", strerror( errornum ));
 						pthread_mutex_lock(&lock);
 						printf("Freeing a url\n");
-						if (urls[url_count] != NULL) {
+//						if (urls[url_count] != NULL) {
 							free(urls[url_count]);
-						}
+//						}
 						url_count--;
 						pthread_mutex_unlock(&lock);
 						return 1;
 				} else {
 					sem_post(&empty);
 				}
-				pthread_mutex_lock(&lock);
-				printf("PNG COUNT: %d URL COUNT: %d UINDEX: %d\n", png_count, url_count, uindex);
-				pthread_mutex_unlock(&lock);
+//				printf("PNG COUNT: %d URL COUNT: %d UINDEX: %d\n", png_count, url_count, uindex);
 		}
 		return 0;
 }
@@ -166,11 +164,11 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf, int m)
 				}else{
 					printf("Invalid PNG\n");
 				}
-				pthread_mutex_lock(&lock);
-				if (buf != NULL) {
+//				pthread_mutex_lock(&lock);
+//				if (buf != NULL) {
 					free(buf);
-				}
-				pthread_mutex_unlock(&lock);
+//				}
+//				pthread_mutex_unlock(&lock);
 		}		
 
 		/*
@@ -264,25 +262,20 @@ void *thread_function(void* arg){
 	RECV_BUF recv_buf;
 
 	while(1){
-//		pthread_mutex_lock(&lock);
-//		if ( m == png_count ) {
-//			pthread_mutex_unlock(&lock);
-//			break;
-//		}
-//		pthread_mutex_unlock(&lock);
-		sem_wait(&empty); // maybe replace with a conditional variable
+		
+		/* Wait if there are no new urls */
+		sem_wait(&empty); /* maybe replace with a conditional variable */
 
 		pthread_mutex_lock(&lock);
+		/* Exit conditions */
 		if (png_count >= m || (png_count >= 50 && uindex + 1 >= url_count)) {
 			pthread_mutex_unlock(&lock);
 			break;
 		}
-
-//		printf("uindex is now %d url_count is %d\n", uindex, url_count);
+		/* increment uindex and copy url */
 		uindex++;
 		strcpy(url, urls[uindex]);
 		pthread_mutex_unlock(&lock);
-		//printf("%s: URL is %s\n", argv[0], url);
 		
 		curl_handle = easy_handle_init(&recv_buf, url);
 
@@ -299,12 +292,6 @@ void *thread_function(void* arg){
 				continue;
 		} 
 
-		/* else {
-			printf("%lu bytes received in memory %p, seq=%d.\n", \
-			recv_buf.size, recv_buf.buf, recv_buf.seq);
-			}
-			*/
-
 		/* process the download data */
 		/* Find the links in the html */
 		process_data(curl_handle, &recv_buf, m);
@@ -315,13 +302,13 @@ void *thread_function(void* arg){
 		}
 		curl_easy_cleanup(curl_handle);
 		recv_buf_cleanup(&recv_buf);
-
+		
+		/* Exit condition */
 		if(png_count >= m || (png_count >= 50 && uindex + 1 >= url_count)) {
 				break;
 		}
 		
 	}
-//	printf("GOODBYE\n");
 	sem_post(&empty);
 	return NULL;
 }
@@ -361,6 +348,7 @@ int main( int argc, char** argv )
 		char url[256];
 		strcpy(url, argv[argc-1]);
 		
+		/* Initialize Locks and Semaphores */
 		pthread_mutex_init(&lock, NULL);
 		pthread_mutex_init(&process, NULL);
 		if ( sem_init(&empty, 0, 0) != 0 ) {
@@ -403,15 +391,16 @@ int main( int argc, char** argv )
 		in_params.v = v;
 		in_params.m = m;
 		in_params.logfile = logfile;
-
+		
+		/* Create t threads */
 		for (int i = 0; i < t; i++) {
 			pthread_create(p_tids + i, NULL, thread_function, &in_params);
 		}
 
+		/* Join threads */
 		for (int i = 0; i < t; i++) {
         	pthread_join(p_tids[i], NULL);
-//        printf("Thread ID %lu joined.\n", p_tids[i]);
-    	}
+    		}
 
 		/* Close the logfiles */
 		if(v != NULL)
@@ -421,15 +410,17 @@ int main( int argc, char** argv )
 
 
 		/* cleaning up */
-		printf("THE ENDING FREES\n");
 		free(p_tids);
+
+		/* Destroy Locks and Semaphore */
 		pthread_mutex_destroy(&lock);
 		pthread_mutex_destroy(&process);
 		if (sem_destroy(&empty)) {
 		        perror("sem_destroy");
 		        abort();
 		}
-
+		
+		/* Free URLs */
 		for(int i=0; i < url_count; i++){
 				free(urls[i]);
 		}
