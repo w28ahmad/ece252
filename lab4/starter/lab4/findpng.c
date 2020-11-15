@@ -145,7 +145,7 @@ int process_html(CURL *curl_handle, RECV_BUF *p_recv_buf)
 }
 
 /* Commented write file for the same reason */
-int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
+int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf, int m)
 {
 		//pid_t pid =getpid();
 		//char fname[256];
@@ -156,19 +156,17 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 				/* Validate the the image has a png signature */
 				U8* buf=(U8*)malloc(sizeof(U8)*PNG_SIG_SIZE);
 				memcpy(buf, p_recv_buf->buf, sizeof(U8)*PNG_SIG_SIZE);
-				if(is_png(buf, sizeof(U8)*PNG_SIG_SIZE)){
+				if(is_png(buf, sizeof(U8)*PNG_SIG_SIZE) && png_count < m){
 						pthread_mutex_lock(&lock);
-						png_count++;
-						
+						png_count++;						
 						printf("Adding PNG\n");
 						/* save url to log file */
 						fprintf(png_log_file, "%s\n", eurl);
 						pthread_mutex_unlock(&lock);
 				}else{
-//					printf("Invalid PNG\n");
+					printf("Invalid PNG\n");
 				}
 				pthread_mutex_lock(&lock);
-				printf("Freeing buf\n");
 				if (buf != NULL) {
 					free(buf);
 				}
@@ -190,7 +188,7 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
  * @return 0 on success; non-zero otherwise
  */
 
-int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
+int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf, int m)
 {
 		CURLcode res;
 		//char fname[256];
@@ -215,11 +213,17 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 //				fprintf(stderr, "Failed obtain Content-Type\n");
 				return 2;
 		}
-
+		int val;
 		if ( strstr(ct, CT_HTML) ) {
-				return process_html(curl_handle, p_recv_buf);
+			pthread_mutex_lock(&process);
+				val = process_html(curl_handle, p_recv_buf);
+			pthread_mutex_unlock(&process);
+			return val;
 		} else if ( strstr(ct, CT_PNG) ) {
-				return process_png(curl_handle, p_recv_buf);
+			pthread_mutex_lock(&process);
+				val = process_png(curl_handle, p_recv_buf, m);
+			pthread_mutex_unlock(&process);
+			return val;
 		} 
 		
 		/* If the data is for instance jpeg data
@@ -267,12 +271,12 @@ void *thread_function(void* arg){
 //		}
 //		pthread_mutex_unlock(&lock);
 		sem_wait(&empty); // maybe replace with a conditional variable
-		
-		if (png_count >= m || (png_count >= 50 && uindex + 1 >= url_count)) {
-			break;
-		}
 
 		pthread_mutex_lock(&lock);
+		if (png_count >= m || (png_count >= 50 && uindex + 1 >= url_count)) {
+			pthread_mutex_unlock(&lock);
+			break;
+		}
 
 //		printf("uindex is now %d url_count is %d\n", uindex, url_count);
 		uindex++;
@@ -303,7 +307,7 @@ void *thread_function(void* arg){
 
 		/* process the download data */
 		/* Find the links in the html */
-		process_data(curl_handle, &recv_buf);
+		process_data(curl_handle, &recv_buf, m);
 
 		/* Add urls to url_logfile if needed */
 		if(v != NULL){
@@ -317,7 +321,7 @@ void *thread_function(void* arg){
 		}
 		
 	}
-	printf("GOODBYE\n");
+//	printf("GOODBYE\n");
 	sem_post(&empty);
 	return NULL;
 }
@@ -426,9 +430,9 @@ int main( int argc, char** argv )
 		        abort();
 		}
 
-//		for(int i=0; i < url_count; i++){
-//				free(urls[i]);
-//		}
+		for(int i=0; i < url_count; i++){
+				free(urls[i]);
+		}
 		hdestroy();
 
 		/* Stop the timer */
