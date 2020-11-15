@@ -10,8 +10,6 @@
 #include <libxml/uri.h>
 #include <search.h> /* hashmap */
 #include <errno.h>
-#include <pthread.h>
-#include <semaphore.h>
 #include "utils.h"
 #include "utils.c"
 
@@ -53,17 +51,7 @@ char* urls[HASH_TABLE_SIZE];
 /* Global Vars */
 int url_count=0; 
 int png_count=0;
-int uindex = -1;
 FILE* png_log_file;
-pthread_mutex_t lock;
-sem_t empty;
-
-struct thread_args              /* thread input parameters struct */
-{
-    char* v;
-    int m;
-	FILE* logfile;
-};
 
 void print_hashmap();
 
@@ -89,31 +77,22 @@ int add_url_to_map(char* url){
 		if(!result){
 				/* Add url to array and update counts */
 				size_t url_size = sizeof(char)*(strlen((const char*)url));
-				pthread_mutex_lock(&lock);
 				urls[url_count] = (char*)malloc(url_size);
 				memcpy(urls[url_count], (const char*)url, url_size);
 				slot.key=urls[url_count];
 				url_count++;
-				pthread_mutex_unlock(&lock);
 
 				/* Add the data to the table */
-				pthread_mutex_lock(&lock);
 				ENTRY* result = hsearch(slot, ENTER);
-				pthread_mutex_unlock(&lock);
 				if (result == NULL) {
 						int errornum = errno;
 						fprintf(stderr, "Entry error: %s\n", strerror( errornum ));
 						free(urls[url_count]);
-						pthread_mutex_lock(&lock);
 						url_count--;
-						pthread_mutex_unlock(&lock);
 						return 1;
-				} else {
-					sem_post(&empty);
 				}
-				pthread_mutex_lock(&lock);
-				printf("PNG COUNT: %d URL COUNT: %d UINDEX: %d\n", png_count, url_count, uindex);
-				pthread_mutex_unlock(&lock);
+
+
 		}
 		return 0;
 }
@@ -151,13 +130,10 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 				U8* buf=(U8*)malloc(sizeof(U8)*PNG_SIG_SIZE);
 				memcpy(buf, p_recv_buf->buf, sizeof(U8)*PNG_SIG_SIZE);
 				if(is_png(buf, sizeof(U8)*PNG_SIG_SIZE)){
-						pthread_mutex_lock(&lock);
 						png_count++;
-						
 						printf("Adding PNG\n");
 						/* save url to log file */
 						fprintf(png_log_file, "%s\n", eurl);
-						pthread_mutex_unlock(&lock);
 				}else{
 					printf("Invalid PNG\n");
 				}
@@ -235,81 +211,6 @@ void print_hashmap(){
 		}	
 }
 
-void *thread_function(void* arg){
-
-	struct thread_args *p_in = (struct thread_args*)arg;
-	char* v = p_in->v;
-	int m = p_in->m;
-	FILE* logfile = p_in->logfile;
-	char url[256];
-
-	/* Start curl process */
-	CURL *curl_handle;
-	CURLcode res;
-	RECV_BUF recv_buf;
-
-	while(uindex < url_count){
-//		pthread_mutex_lock(&lock);
-//		if ( m == png_count ) {
-//			pthread_mutex_unlock(&lock);
-//			break;
-//		}
-//		pthread_mutex_unlock(&lock);
-		sem_wait(&empty); // maybe replace with a conditional variable
-		
-//		if (png_count >= m) {
-//			break;
-//		}
-
-		pthread_mutex_lock(&lock);
-//		printf("uindex is now %d url_count is %d\n", uindex, url_count);
-		uindex++;
-		strcpy(url, urls[uindex]);
-		pthread_mutex_unlock(&lock);
-		//printf("%s: URL is %s\n", argv[0], url);
-		
-		curl_handle = easy_handle_init(&recv_buf, url);
-
-		if ( curl_handle == NULL ) {
-				fprintf(stderr, "Curl initialization failed. Exiting...\n");
-				break;
-		}
-		/* get the data */
-		res = curl_easy_perform(curl_handle);
-
-		if( res != CURLE_OK) {
-				curl_easy_cleanup(curl_handle);
-				recv_buf_cleanup(&recv_buf);
-				continue;
-		} 
-
-		/* else {
-			printf("%lu bytes received in memory %p, seq=%d.\n", \
-			recv_buf.size, recv_buf.buf, recv_buf.seq);
-			}
-			*/
-
-		/* process the download data */
-		/* Find the links in the html */
-		process_data(curl_handle, &recv_buf);
-
-		/* Add urls to url_logfile if needed */
-		if(v != NULL){
-				fprintf(logfile, "%s\n", url);
-		}
-		curl_easy_cleanup(curl_handle);
-		recv_buf_cleanup(&recv_buf);
-
-		if(png_count >= m) {
-				break;
-		}
-		
-	}
-	sem_post(&empty);
-	return NULL;
-}
-
-
 int main( int argc, char** argv ) 
 {	
 		/* Get the parameters */
@@ -343,13 +244,6 @@ int main( int argc, char** argv )
 		}
 		char url[256];
 		strcpy(url, argv[argc-1]);
-		
-		pthread_mutex_init(&lock, NULL);
-		if ( sem_init(&empty, 0, 0) != 0 ) {
-			perror("sem_init(empty)");
-			abort();
-		}
-
 
 		/* Start the timer */
 		double times[2];
@@ -375,29 +269,14 @@ int main( int argc, char** argv )
 		/* Add the initial link to the map */
 		add_url_to_map(url);
 
+		/* Start curl process */	   
+		CURL *curl_handle;
+		CURLcode res;
+		RECV_BUF recv_buf;
 		curl_global_init(CURL_GLOBAL_DEFAULT);
-
-		/* Threads */
-
-		pthread_t *p_tids = (pthread_t*)malloc(sizeof(pthread_t) * t);
-		struct thread_args in_params;
-
-		in_params.v = v;
-		in_params.m = m;
-		in_params.logfile = logfile;
-
-		for (int i = 0; i < t; i++) {
-			pthread_create(p_tids + i, NULL, thread_function, &in_params);
-		}
-
-		for (int i = 0; i < t; i++) {
-        	pthread_join(p_tids[i], NULL);
-        printf("Thread ID %lu joined.\n", p_tids[i]);
-    	}
 
 		/* This loop will continue until all urls are visited */
 		/* url_count will be incrementing inside the loop each time a url is found */
-/*		
 		for(int i=0; i < url_count; i++){
 				strcpy(url, urls[i]);
 				//printf("%s: URL is %s\n", argv[0], url);
@@ -408,8 +287,8 @@ int main( int argc, char** argv )
 						fprintf(stderr, "Curl initialization failed. Exiting...\n");
 						break;
 				}
-*/				/* get the data */
-/*				res = curl_easy_perform(curl_handle);
+				/* get the data */
+				res = curl_easy_perform(curl_handle);
 
 				if( res != CURLE_OK) {
 						curl_easy_cleanup(curl_handle);
@@ -417,7 +296,7 @@ int main( int argc, char** argv )
 						continue;
 				} 
 
-*/				/* else {
+				/* else {
 				   printf("%lu bytes received in memory %p, seq=%d.\n", \
 				   recv_buf.size, recv_buf.buf, recv_buf.seq);
 				   }
@@ -425,10 +304,10 @@ int main( int argc, char** argv )
 
 				/* process the download data */
 				/* Find the links in the html */
-//				process_data(curl_handle, &recv_buf);
+				process_data(curl_handle, &recv_buf);
 
 				/* Add urls to url_logfile if needed */
-/*				if(v != NULL){
+				if(v != NULL){
 						fprintf(logfile, "%s\n", url);
 				}
 				curl_easy_cleanup(curl_handle);
@@ -436,7 +315,6 @@ int main( int argc, char** argv )
 				if(png_count >= m)
 						break;
 		}
-*/		
 
 		/* url ---> NULL */
 		/* print_hashmap(); */
@@ -449,13 +327,6 @@ int main( int argc, char** argv )
 
 
 		/* cleaning up */
-		free(p_tids);
-		pthread_mutex_destroy(&lock);
-		if (sem_destroy(&empty)) {
-		        perror("sem_destroy");
-		        abort();
-		}
-
 		for(int i=0; i < url_count; i++){
 				free(urls[i]);
 		}
