@@ -56,6 +56,7 @@ int png_count=0;
 int uindex = -1;
 FILE* png_log_file;
 pthread_mutex_t lock;
+pthread_mutex_t process;
 sem_t empty;
 
 struct thread_args              /* thread input parameters struct */
@@ -85,7 +86,9 @@ int is_png(U8 *buf, size_t n){
 int add_url_to_map(char* url){
 		slot.key=url;
 		slot.data = NULL;
+		pthread_mutex_lock(&lock);
 		ENTRY* result = hsearch(slot, FIND);
+		pthread_mutex_unlock(&lock);
 		if(!result){
 				/* Add url to array and update counts */
 				size_t url_size = sizeof(char)*(strlen((const char*)url));
@@ -103,8 +106,11 @@ int add_url_to_map(char* url){
 				if (result == NULL) {
 						int errornum = errno;
 						fprintf(stderr, "Entry error: %s\n", strerror( errornum ));
-						free(urls[url_count]);
 						pthread_mutex_lock(&lock);
+						printf("Freeing a url\n");
+						if (urls[url_count] != NULL) {
+							free(urls[url_count]);
+						}
 						url_count--;
 						pthread_mutex_unlock(&lock);
 						return 1;
@@ -159,9 +165,14 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 						fprintf(png_log_file, "%s\n", eurl);
 						pthread_mutex_unlock(&lock);
 				}else{
-					printf("Invalid PNG\n");
+//					printf("Invalid PNG\n");
 				}
-				free(buf);
+				pthread_mutex_lock(&lock);
+				printf("Freeing buf\n");
+				if (buf != NULL) {
+					free(buf);
+				}
+				pthread_mutex_unlock(&lock);
 		}		
 
 		/*
@@ -188,20 +199,20 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 
 		res = curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
 		if ( res == CURLE_OK ) {
-				printf("Response code: %ld\n", response_code);
+//				printf("Response code: %ld\n", response_code);
 		}
 
 		if ( response_code >= 400 ) { 
-				fprintf(stderr, "Error. Respose Code: %ld\n", response_code);
+//				fprintf(stderr, "Error. Respose Code: %ld\n", response_code);
 				return 1;
 		}
 
 		char *ct = NULL;
 		res = curl_easy_getinfo(curl_handle, CURLINFO_CONTENT_TYPE, &ct);
 		if ( res == CURLE_OK && ct != NULL ) {
-				printf("Content-Type: %s, len=%ld\n", ct, strlen(ct));
+//				printf("Content-Type: %s, len=%ld\n", ct, strlen(ct));
 		} else {
-				fprintf(stderr, "Failed obtain Content-Type\n");
+//				fprintf(stderr, "Failed obtain Content-Type\n");
 				return 2;
 		}
 
@@ -248,7 +259,7 @@ void *thread_function(void* arg){
 	CURLcode res;
 	RECV_BUF recv_buf;
 
-	while(uindex < url_count){
+	while(1){
 //		pthread_mutex_lock(&lock);
 //		if ( m == png_count ) {
 //			pthread_mutex_unlock(&lock);
@@ -257,11 +268,12 @@ void *thread_function(void* arg){
 //		pthread_mutex_unlock(&lock);
 		sem_wait(&empty); // maybe replace with a conditional variable
 		
-//		if (png_count >= m) {
-//			break;
-//		}
+		if (png_count >= m || (png_count >= 50 && uindex + 1 >= url_count)) {
+			break;
+		}
 
 		pthread_mutex_lock(&lock);
+
 //		printf("uindex is now %d url_count is %d\n", uindex, url_count);
 		uindex++;
 		strcpy(url, urls[uindex]);
@@ -300,11 +312,12 @@ void *thread_function(void* arg){
 		curl_easy_cleanup(curl_handle);
 		recv_buf_cleanup(&recv_buf);
 
-		if(png_count >= m) {
+		if(png_count >= m || (png_count >= 50 && uindex + 1 >= url_count)) {
 				break;
 		}
 		
 	}
+	printf("GOODBYE\n");
 	sem_post(&empty);
 	return NULL;
 }
@@ -345,6 +358,7 @@ int main( int argc, char** argv )
 		strcpy(url, argv[argc-1]);
 		
 		pthread_mutex_init(&lock, NULL);
+		pthread_mutex_init(&process, NULL);
 		if ( sem_init(&empty, 0, 0) != 0 ) {
 			perror("sem_init(empty)");
 			abort();
@@ -392,55 +406,9 @@ int main( int argc, char** argv )
 
 		for (int i = 0; i < t; i++) {
         	pthread_join(p_tids[i], NULL);
-        printf("Thread ID %lu joined.\n", p_tids[i]);
+//        printf("Thread ID %lu joined.\n", p_tids[i]);
     	}
 
-		/* This loop will continue until all urls are visited */
-		/* url_count will be incrementing inside the loop each time a url is found */
-/*		
-		for(int i=0; i < url_count; i++){
-				strcpy(url, urls[i]);
-				//printf("%s: URL is %s\n", argv[0], url);
-				
-				curl_handle = easy_handle_init(&recv_buf, url);
-
-				if ( curl_handle == NULL ) {
-						fprintf(stderr, "Curl initialization failed. Exiting...\n");
-						break;
-				}
-*/				/* get the data */
-/*				res = curl_easy_perform(curl_handle);
-
-				if( res != CURLE_OK) {
-						curl_easy_cleanup(curl_handle);
-						recv_buf_cleanup(&recv_buf);
-						continue;
-				} 
-
-*/				/* else {
-				   printf("%lu bytes received in memory %p, seq=%d.\n", \
-				   recv_buf.size, recv_buf.buf, recv_buf.seq);
-				   }
-				   */
-
-				/* process the download data */
-				/* Find the links in the html */
-//				process_data(curl_handle, &recv_buf);
-
-				/* Add urls to url_logfile if needed */
-/*				if(v != NULL){
-						fprintf(logfile, "%s\n", url);
-				}
-				curl_easy_cleanup(curl_handle);
-				recv_buf_cleanup(&recv_buf);
-				if(png_count >= m)
-						break;
-		}
-*/		
-
-		/* url ---> NULL */
-		/* print_hashmap(); */
-		
 		/* Close the logfiles */
 		if(v != NULL)
 				fclose(logfile);
@@ -449,16 +417,18 @@ int main( int argc, char** argv )
 
 
 		/* cleaning up */
+		printf("THE ENDING FREES\n");
 		free(p_tids);
 		pthread_mutex_destroy(&lock);
+		pthread_mutex_destroy(&process);
 		if (sem_destroy(&empty)) {
 		        perror("sem_destroy");
 		        abort();
 		}
 
-		for(int i=0; i < url_count; i++){
-				free(urls[i]);
-		}
+//		for(int i=0; i < url_count; i++){
+//				free(urls[i]);
+//		}
 		hdestroy();
 
 		/* Stop the timer */
