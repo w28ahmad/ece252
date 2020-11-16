@@ -19,33 +19,6 @@
 
 extern int errno;
 
-/* FEW NOTES
- * 
- * RESULTS = List of Unique PNG files that creates png_urls.txt file
- * VISITED = List of URLs the web crawler has seen
- * FRONTIER = List of URLs that are pending to be visited.
- *
- * Currently items of these lists are all inside urls[]
- * urls-> [url_1, url_2, url_3, url_4, url_6, ..., url_n]
- * 			 ^					  ^					 ^
- *			 0					  i					 n
- * urls[0..i] is the visited list
- * urls[i+1..n] is the frontier list
- * where i the url the crawler is currently on
- * The multithreaded version may need these lists seperated (not sure)
- *
- * Currently I am not storing RESULTS in a list, they are being written straight to png_urls.txt directly
- *
- * BUGS
- * I have seen 1 or 2 duplicate urls in url logfile, but those duplicates only occur from 1 or 2 specific urls
- * you can vew duplicate lines in a txt file using the following command
- * sort <filename>  | uniq -d
- *
- * If the hashtable is not large enough you might see entry errors. Currently the hashtable is set to 500 entries
- */ 
-
-
-
 /* create a hashtable */
 ENTRY slot;
 char* urls[HASH_TABLE_SIZE];
@@ -91,10 +64,21 @@ int add_url_to_map(char* url){
 		pthread_mutex_unlock(&lock);
 		if(!result){
 				/* Add url to array and update counts */
-				size_t url_size = sizeof(char)*(strlen((const char*)url));
 				pthread_mutex_lock(&lock);
+				size_t url_size = sizeof(char)*(strlen((char*)url));
 				urls[url_count] = (char*)malloc(url_size);
-				memcpy(urls[url_count], (const char*)url, url_size);
+				memset(urls[url_count], 0, url_size);
+				memcpy(urls[url_count], (char*)url, url_size);
+			
+				/* Invalid url parsing - does not end with a null terminator*/
+				/*
+				if(urls[url_count][url_size] != '\0'){
+					free(urls[url_count]);
+					pthread_mutex_unlock(&lock);
+					return 1;
+				}
+				*/
+	
 				slot.key=urls[url_count];
 				url_count++;
 				pthread_mutex_unlock(&lock);
@@ -122,31 +106,20 @@ int add_url_to_map(char* url){
 		return 0;
 }
 
-/* I commented the write file becuase it was not needed in single threaded version
- * It might be useful in the multithreaded version.
- */
 int process_html(CURL *curl_handle, RECV_BUF *p_recv_buf)
 {
-		//char fname[256];
 		int follow_relative_link = 1;
 		char *url = NULL; 
-		//pid_t pid =getpid();
 
 		curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
 		find_http(p_recv_buf->buf, p_recv_buf->size, follow_relative_link, url); 
 
-		/*
-		   sprintf(fname, "./output_%d.html", pid);
-		   return write_file(fname, p_recv_buf->buf, p_recv_buf->size);
-		   */
 		return 0;
 }
 
 /* Commented write file for the same reason */
 int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf, int m)
 {
-		//pid_t pid =getpid();
-		//char fname[256];
 		char *eurl = NULL;          /* effective URL */
 		curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &eurl);
 
@@ -171,10 +144,6 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf, int m)
 //				pthread_mutex_unlock(&lock);
 		}		
 
-		/*
-		   sprintf(fname, "./output_%d_%d.png", p_recv_buf->seq, pid);
-		   return write_file(fname, p_recv_buf->buf, p_recv_buf->size);
-		   */
 		return 0;
 }
 
@@ -189,8 +158,6 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf, int m)
 int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf, int m)
 {
 		CURLcode res;
-		//char fname[256];
-		//pid_t pid =getpid();
 		long response_code;
 
 		res = curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
@@ -224,15 +191,6 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf, int m)
 			return val;
 		} 
 		
-		/* If the data is for instance jpeg data
-		 * the following code will write it to a file 
-		 */
-		
-		/*else {
-		  sprintf(fname, "./output_%d", pid);
-		  }
-
-		  return write_file(fname, p_recv_buf->buf, p_recv_buf->size); */
 		return 0;
 }
 
@@ -304,9 +262,12 @@ void *thread_function(void* arg){
 		recv_buf_cleanup(&recv_buf);
 		
 		/* Exit condition */
+		pthread_mutex_lock(&lock); /* For the read of png_count */
 		if(png_count >= m || (png_count >= 50 && uindex + 1 >= url_count)) {
+				pthread_mutex_unlock(&lock);
 				break;
 		}
+		pthread_mutex_unlock(&lock);
 		
 	}
 	sem_post(&empty);
@@ -401,6 +362,8 @@ int main( int argc, char** argv )
 		for (int i = 0; i < t; i++) {
         	pthread_join(p_tids[i], NULL);
     		}
+
+		/* print_hashmap(); */
 
 		/* Close the logfiles */
 		if(v != NULL)
