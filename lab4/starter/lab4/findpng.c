@@ -71,13 +71,13 @@ int add_url_to_map(char* url){
 				memcpy(urls[url_count], (char*)url, url_size);
 			
 				/* Invalid url parsing - does not end with a null terminator*/
-				/*
+				
 				if(urls[url_count][url_size] != '\0'){
 					free(urls[url_count]);
 					pthread_mutex_unlock(&lock);
 					return 1;
 				}
-				*/
+				
 	
 				slot.key=urls[url_count];
 				url_count++;
@@ -91,17 +91,13 @@ int add_url_to_map(char* url){
 						int errornum = errno;
 						fprintf(stderr, "Entry error: %s\n", strerror( errornum ));
 						pthread_mutex_lock(&lock);
-						printf("Freeing a url\n");
-//						if (urls[url_count] != NULL) {
-							free(urls[url_count]);
-//						}
+						free(urls[url_count]);
 						url_count--;
 						pthread_mutex_unlock(&lock);
 						return 1;
 				} else {
 					sem_post(&empty);
 				}
-//				printf("PNG COUNT: %d URL COUNT: %d UINDEX: %d\n", png_count, url_count, uindex);
 		}
 		return 0;
 }
@@ -130,18 +126,14 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf, int m)
 				if(is_png(buf, sizeof(U8)*PNG_SIG_SIZE) && png_count < m){
 						pthread_mutex_lock(&lock);
 						png_count++;						
-						printf("Adding PNG\n");
+						/* printf("Adding PNG\n"); */
 						/* save url to log file */
 						fprintf(png_log_file, "%s\n", eurl);
 						pthread_mutex_unlock(&lock);
 				}else{
-					printf("Invalid PNG\n");
+					/*printf("Invalid PNG\n");*/
 				}
-//				pthread_mutex_lock(&lock);
-//				if (buf != NULL) {
 					free(buf);
-//				}
-//				pthread_mutex_unlock(&lock);
 		}		
 
 		return 0;
@@ -162,20 +154,20 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf, int m)
 
 		res = curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
 		if ( res == CURLE_OK ) {
-//				printf("Response code: %ld\n", response_code);
+				/* printf("Response code: %ld\n", response_code); */
 		}
 
 		if ( response_code >= 400 ) { 
-//				fprintf(stderr, "Error. Respose Code: %ld\n", response_code);
+				/* fprintf(stderr, "Error. Respose Code: %ld\n", response_code); */
 				return 1;
 		}
 
 		char *ct = NULL;
 		res = curl_easy_getinfo(curl_handle, CURLINFO_CONTENT_TYPE, &ct);
 		if ( res == CURLE_OK && ct != NULL ) {
-//				printf("Content-Type: %s, len=%ld\n", ct, strlen(ct));
+				/* printf("Content-Type: %s, len=%ld\n", ct, strlen(ct)); */
 		} else {
-//				fprintf(stderr, "Failed obtain Content-Type\n");
+				/* fprintf(stderr, "Failed obtain Content-Type\n"); */
 				return 2;
 		}
 		int val;
