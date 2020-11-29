@@ -28,6 +28,7 @@ int process_data(CURL* curl_handle, RECV_BUF *p_recv_buf);
 
 ENTRY slot; 					/* For hashmap */
 char* urls[HASH_TABLE_SIZE]; 	/* Stores unique visted urls */
+char* pngs[200];
 int url_count=0;				/* Total url count */
 int png_count=0;				/* Total png url count */
 FILE* png_log_file;				/* File discriptor png logfile */
@@ -56,7 +57,6 @@ int main(int argc, char** argv){
 	}
 	times[0] = (tv.tv_sec) + tv.tv_usec/1000000.;
 
-
 	/* Create a logfile for all urls and png urls*/
 	FILE* logfile;
 	if(v != NULL){
@@ -80,81 +80,90 @@ int main(int argc, char** argv){
 	curl_global_init(CURL_GLOBAL_ALL);
 	cm = curl_multi_init();
 
-	/* TODO: loop over unique urls */
-	/*************************** Start loop **************************/
-	
-	
-	/* Initialize links */
-	int i = 0; /* Ensure have less than max concurrent connections */
-	for(; to_crawl < url_count && i < t ; to_crawl++, i++){
-		init(&recv_buf[i], cm, to_crawl);
-	}
-
-	/* Perform */
-	curl_multi_perform(cm, &still_running);
-	/* Keep Performing */
-	do {
-		int numfds=0;
-		int res = curl_multi_wait(cm, NULL, 0, MAX_WAIT_MSECS, &numfds);
-		if(res != CURLM_OK) {
-			fprintf(stderr, "error: curl_multi_wait() returned %d\n", res);
-			return EXIT_FAILURE;
+	/* loop over unique urls */
+	while(1) {
+		
+		/* Exit Condition */
+		if(png_count >= m || (png_count >= 50 && to_crawl >= url_count)) {
+			break;
 		}
+
+		/* Initialize links */
+		int i = 0; /* Ensure have less than max concurrent connections */
+		for(; to_crawl < url_count && i < t ; to_crawl++, i++){
+//			printf("to_crawl: %d, url_count: %d png_count: %d\n", to_crawl, url_count, png_count);
+			init(&recv_buf[i], cm, to_crawl);
+		}
+
+		/* Perform */
 		curl_multi_perform(cm, &still_running);
-	} while(still_running);
-
-	/* Check responses */
-	while ((msg = curl_multi_info_read(cm, &msgs_left))) {
-		if (msg->msg == CURLMSG_DONE) {
-			eh = msg->easy_handle;
-
-			return_code = msg->data.result;
-			if(return_code!=CURLE_OK) {
-				fprintf(stderr, "CURL error code: %d\n", msg->data.result);
-				continue;
+		/* Keep Performing */
+		do {
+			int numfds=0;
+			int res = curl_multi_wait(cm, NULL, 0, MAX_WAIT_MSECS, &numfds);
+			if(res != CURLM_OK) {
+				fprintf(stderr, "error: curl_multi_wait() returned %d\n", res);
+				return EXIT_FAILURE;
 			}
+			curl_multi_perform(cm, &still_running);
+		} while(still_running);
 
-			http_status_code=0;
-			char* crawled_url;
-			curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &http_status_code);
-			curl_easy_getinfo(eh, CURLINFO_EFFECTIVE_URL, &crawled_url);
-	
-			if(http_status_code==200) {
-				printf("200 OK for %s\n", crawled_url);	/* Not sure why szUrl is null? (But it is not necessary for the program) */
-				for(int j=0; j < i; j++){
-					printf("%lu bytes received in memory %p, seq=%d.\n", recv_buf[j].size, recv_buf[j].buf, recv_buf[j].seq);
-					/* printf("%s\n", recv_buf[j].buf); */
+		/* Check responses */
+		while ((msg = curl_multi_info_read(cm, &msgs_left))) {
+			if (msg->msg == CURLMSG_DONE) {
+				eh = msg->easy_handle;
 
-					/* Parse/Process Data */
-					process_data(eh, &recv_buf[j]);
-					/* Stop png limit is reached */
-					if(png_count >= m)
-						break;
+				return_code = msg->data.result;
+				if(return_code!=CURLE_OK) {
+//					fprintf(stderr, "CURL error code: %d\n", msg->data.result);
+					continue;
 				}
-			} else {
-				fprintf(stderr, "GET of %s returned http status code %d\n", crawled_url, http_status_code);
-			}
 
-			curl_multi_remove_handle(cm, eh);
-			curl_easy_cleanup(eh);
-		}
-		else {
+				http_status_code=0;
+				char* crawled_url;
+				curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &http_status_code);
+				curl_easy_getinfo(eh, CURLINFO_EFFECTIVE_URL, &crawled_url);
+		
+				if (http_status_code==200) {
+//					printf("200 OK for %s\n", crawled_url);	/* Not sure why szUrl is null? (But it is not necessary for the program) */
+					
+					if (v != NULL) {
+						fprintf(logfile,"%s\n", crawled_url);
+					}
+					for(int j=0; j < i; j++){
+
+//						printf("%lu bytes received in memory %p, seq=%d.\n", recv_buf[j].size, recv_buf[j].buf, recv_buf[j].seq);
+						/* printf("%s\n", recv_buf[j].buf); */
+
+						/* Parse/Process Data */
+						process_data(eh, &recv_buf[j]);
+						/* Stop png limit is reached */
+						if(png_count >= m || (png_count >= 50 && to_crawl >= url_count)) {
+							break;
+						}
+					}
+				} else {
+//					fprintf(stderr, "GET of %s returned http status code %d\n", crawled_url, http_status_code);
+				}
+
+				curl_multi_remove_handle(cm, eh);
+				curl_easy_cleanup(eh);
+			} 
+			else {
 			fprintf(stderr, "error: after curl_multi_info_read(), CURLMsg=%d\n", msg->msg);
+			}
 		}
-	}
-
-	/* Clean */
-	for(int j=0; j < i; j++){
-		recv_buf_cleanup(&recv_buf[j]);
-	}
-
-
+		/* Clean */
+		for(int j=0; j < i; j++){
+			recv_buf_cleanup(&recv_buf[j]);
+		}
 	
-	/* TODO: Add the unique looped urls to the url_logfile */
 	/*************************** End loop ****************************/
+	}
 
 	/* Cleanup */
 	curl_multi_cleanup(cm);
+	curl_global_cleanup();
 	/* Close the logfiles */
 	if(v != NULL)
 		fclose(logfile);
@@ -163,6 +172,12 @@ int main(int argc, char** argv){
 	for(int i=0; i < url_count; i++){
 		free(urls[i]);
 	}
+	for(int i=0; i < png_count; i++){
+		free(pngs[i]);
+	}
+
+
+
 	hdestroy();
 
 	/* Stop the timer */
@@ -185,25 +200,42 @@ int add_url_to_map(char* url){
 	slot.data = NULL;
 	ENTRY* result = hsearch(slot, FIND);
 	if(!result){
+
+		/* Check if url is unique */
+		for (int i = 0; i < url_count; i++) {
+			if (strcmp(url, urls[i]) == 0) {
+				return 1;
+			}
+		}
+		
 		/* Add url to array and update counts */
 		size_t url_size = sizeof(char)*(strlen((const char*)url));
 		urls[url_count] = (char*)malloc(url_size);
 		memcpy(urls[url_count], (const char*)url, url_size);
+
+		/* TODO: if the bug from lab4 is still present, add if cond. to  remove it */
+		/* Invalid url parsing - does not end with a null terminator*/
+		if(urls[url_count][url_size] != '\0'){
+			free(urls[url_count]);
+			return 1;
+		}
+
 		slot.key=urls[url_count];
 		url_count++;
 		
-		/* TODO: if the bug from lab4 is still present, add if cond. to  remove it */
 		/* Add the data to the table */
-		printf("Adding url: %s to hashmap\n", url);
+//		printf("Adding url: %s to hashmap\n", url);
 		ENTRY* result = hsearch(slot, ENTER);
 		if (result == NULL) {
 			int errornum = errno;
 			fprintf(stderr, "Entry error: %s\n", strerror( errornum ));
 			free(urls[url_count]);
 			url_count--;
+
 			return 1;
 		}
 	}
+
 	return 0;
 }
 
@@ -221,21 +253,30 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 	char *eurl = NULL;
 	curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &eurl);
 
+	/* Check if png is unique */
+	for (int i = 0; i < png_count; i++) {
+		if (strcmp(eurl, pngs[i]) == 0) {
+			return 1;
+		}
+	}
+
 	if ( eurl != NULL) {
 		/* Validate the the image has a png signature */
 		U8* buf=(U8*)malloc(sizeof(U8)*PNG_SIG_SIZE);
 		memcpy(buf, p_recv_buf->buf, sizeof(U8)*PNG_SIG_SIZE);
 		if(is_png(buf, sizeof(U8)*PNG_SIG_SIZE)){
-			png_count++;
-			printf("Adding PNG\n");
+//			printf("Adding PNG: %s\n", eurl);
 			/* save url to log file */
+			size_t url_size = sizeof(char)*(strlen((const char*)eurl));
+			pngs[png_count] = (char*)malloc(url_size);
+			memcpy(pngs[png_count], (const char*)eurl, url_size);
+			png_count++;
 			fprintf(png_log_file, "%s\n", eurl);
 		}else{
-			printf("Invalid PNG\n");
+//			printf("Invalid PNG: %s\n", eurl);
 		}
 		free(buf);
-	}		
-
+	}	
 	return 0;
 }
 
@@ -257,23 +298,20 @@ int process_html(CURL *curl_handle, RECV_BUF *p_recv_buf)
  */
 int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 {
-
 	CURLcode res;
 	char *ct = NULL;
 	res = curl_easy_getinfo(curl_handle, CURLINFO_CONTENT_TYPE, &ct);
 	if ( res == CURLE_OK && ct != NULL ) {
-		printf("Content-Type: %s, len=%ld\n", ct, strlen(ct));
+//		printf("Content-Type: %s, len=%ld\n", ct, strlen(ct));
 	} else {
-		fprintf(stderr, "Failed obtain Content-Type\n");
+//		fprintf(stderr, "Failed obtain Content-Type\n");
 		return 2;
 	}
-
 	if ( strstr(ct, CT_HTML) ) {
 		return process_html(curl_handle, p_recv_buf);
 	} else if ( strstr(ct, CT_PNG) ) {
 		return process_png(curl_handle, p_recv_buf);
 	} 
-
 	return 0;
 }
 
@@ -283,7 +321,6 @@ static void init(RECV_BUF* ptr, CURLM *cm, int i)
 	if ( recv_buf_init(ptr, BUF_SIZE) != 0 ) {
 		fprintf(stderr, "recv_buf_init did not work!\n");
 	}
-
 	CURL *eh = curl_easy_init();
 	/* specify URL to get */
 	curl_easy_setopt(eh, CURLOPT_URL, urls[i]);

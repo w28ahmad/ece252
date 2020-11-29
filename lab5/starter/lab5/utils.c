@@ -7,7 +7,7 @@ htmlDocPtr mem_getdoc(char *buf, int size, const char *url)
 	htmlDocPtr doc = htmlReadMemory(buf, size, url, NULL, opts);
 
 	if ( doc == NULL ) {
-		fprintf(stderr, "Document not parsed successfully.\n");
+//		fprintf(stderr, "Document not parsed successfully.\n");
 		return NULL;
 	}
 	return doc;
