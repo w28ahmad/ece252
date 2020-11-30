@@ -12,12 +12,10 @@
 #include "utils.h"
 #include "utils.c"
 
-#define DEBUG printf("D\n");
 extern int errno;
 
 int get_params(int* t, int* m, char** v, int argc, char** argv);
 int add_url_to_map(char* url);
-void print_hashmap();
 int is_png(U8 *buf, size_t n);
 size_t write_cb_curl3(char *p_recv, size_t size, size_t nmemb, void *p_userdata);
 int recv_buf_init(RECV_BUF *ptr, size_t max_size);
@@ -28,7 +26,6 @@ int process_data(CURL* curl_handle, RECV_BUF *p_recv_buf);
 
 ENTRY slot; 					/* For hashmap */
 char* urls[HASH_TABLE_SIZE]; 	/* Stores unique visted urls */
-char* pngs[200];
 int url_count=0;				/* Total url count */
 int png_count=0;				/* Total png url count */
 FILE* png_log_file;				/* File discriptor png logfile */
@@ -45,7 +42,6 @@ int main(int argc, char** argv){
 	}
 	char url[256];
 	strcpy(url, argv[argc-1]);
-	//printf("%d %d %s %s\n", t, m, v, url);
 
 	/* Start the timer */
 	double times[2];
@@ -74,24 +70,24 @@ int main(int argc, char** argv){
 	CURLMsg *msg=NULL;
 	RECV_BUF recv_buf[m];
 	CURLcode return_code = (CURLcode)0;
-	int still_running=0, msgs_left=0;
+	int msgs_left=0;
 	int http_status_code;
 
 	curl_global_init(CURL_GLOBAL_ALL);
 	cm = curl_multi_init();
 
 	/* loop over unique urls */
-	while(1) {
+	while( png_count < m && to_crawl < url_count ) {
+		int still_running=0;
 		
-		/* Exit Condition */
-		if(png_count >= m || (png_count >= 50 && to_crawl >= url_count)) {
-			break;
-		}
+		/* We need an array where the index matches i and data matches to_crawl */
+		/* So once we have crawled a url we know which recv_buf belongs to it */
+		int recv_buf_to_url[t];
 
 		/* Initialize links */
 		int i = 0; /* Ensure have less than max concurrent connections */
 		for(; to_crawl < url_count && i < t ; to_crawl++, i++){
-//			printf("to_crawl: %d, url_count: %d png_count: %d\n", to_crawl, url_count, png_count);
+			recv_buf_to_url[i] = to_crawl;
 			init(&recv_buf[i], cm, to_crawl);
 		}
 
@@ -114,56 +110,55 @@ int main(int argc, char** argv){
 				eh = msg->easy_handle;
 
 				return_code = msg->data.result;
+				/* Error Code*/
 				if(return_code!=CURLE_OK) {
-//					fprintf(stderr, "CURL error code: %d\n", msg->data.result);
 					continue;
 				}
 
 				http_status_code=0;
+				char* crawled_url_redirected;/* not used */
 				char* crawled_url;
 				curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &http_status_code);
-				curl_easy_getinfo(eh, CURLINFO_EFFECTIVE_URL, &crawled_url);
-		
+				curl_easy_getinfo(eh, CURLINFO_EFFECTIVE_URL, &crawled_url_redirected);
+				curl_easy_getinfo(eh, CURLINFO_PRIVATE, &crawled_url);
+
 				if (http_status_code==200) {
-//					printf("200 OK for %s\n", crawled_url);	/* Not sure why szUrl is null? (But it is not necessary for the program) */
-					
 					if (v != NULL) {
 						fprintf(logfile,"%s\n", crawled_url);
 					}
+					/* recover the data for the crawled url*/
+					int buffer_idx=-1;
 					for(int j=0; j < i; j++){
-
-//						printf("%lu bytes received in memory %p, seq=%d.\n", recv_buf[j].size, recv_buf[j].buf, recv_buf[j].seq);
-						/* printf("%s\n", recv_buf[j].buf); */
-
-						/* Parse/Process Data */
-						process_data(eh, &recv_buf[j]);
-						/* Stop png limit is reached */
-						if(png_count >= m || (png_count >= 50 && to_crawl >= url_count)) {
-							break;
+						if(urls[recv_buf_to_url[j]] == crawled_url){
+							buffer_idx = j;
 						}
 					}
-				} else {
-//					fprintf(stderr, "GET of %s returned http status code %d\n", crawled_url, http_status_code);
-				}
 
+					/* Parse/Process Data */
+					if( buffer_idx != -1){
+						process_data(eh, &recv_buf[buffer_idx]);
+					}
+				} else {
+				}
 				curl_multi_remove_handle(cm, eh);
 				curl_easy_cleanup(eh);
 			} 
 			else {
-			fprintf(stderr, "error: after curl_multi_info_read(), CURLMsg=%d\n", msg->msg);
+				fprintf(stderr, "error: after curl_multi_info_read(), CURLMsg=%d\n", msg->msg);
 			}
 		}
 		/* Clean */
 		for(int j=0; j < i; j++){
 			recv_buf_cleanup(&recv_buf[j]);
 		}
-	
-	/*************************** End loop ****************************/
+
+		/*************************** End loop ****************************/
 	}
 
 	/* Cleanup */
 	curl_multi_cleanup(cm);
 	curl_global_cleanup();
+	
 	/* Close the logfiles */
 	if(v != NULL)
 		fclose(logfile);
@@ -172,12 +167,6 @@ int main(int argc, char** argv){
 	for(int i=0; i < url_count; i++){
 		free(urls[i]);
 	}
-	for(int i=0; i < png_count; i++){
-		free(pngs[i]);
-	}
-
-
-
 	hdestroy();
 
 	/* Stop the timer */
@@ -200,20 +189,11 @@ int add_url_to_map(char* url){
 	slot.data = NULL;
 	ENTRY* result = hsearch(slot, FIND);
 	if(!result){
-
-		/* Check if url is unique */
-		for (int i = 0; i < url_count; i++) {
-			if (strcmp(url, urls[i]) == 0) {
-				return 1;
-			}
-		}
-		
 		/* Add url to array and update counts */
 		size_t url_size = sizeof(char)*(strlen((const char*)url));
 		urls[url_count] = (char*)malloc(url_size);
 		memcpy(urls[url_count], (const char*)url, url_size);
 
-		/* TODO: if the bug from lab4 is still present, add if cond. to  remove it */
 		/* Invalid url parsing - does not end with a null terminator*/
 		if(urls[url_count][url_size] != '\0'){
 			free(urls[url_count]);
@@ -222,9 +202,8 @@ int add_url_to_map(char* url){
 
 		slot.key=urls[url_count];
 		url_count++;
-		
+
 		/* Add the data to the table */
-//		printf("Adding url: %s to hashmap\n", url);
 		ENTRY* result = hsearch(slot, ENTER);
 		if (result == NULL) {
 			int errornum = errno;
@@ -253,27 +232,17 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 	char *eurl = NULL;
 	curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &eurl);
 
-	/* Check if png is unique */
-	for (int i = 0; i < png_count; i++) {
-		if (strcmp(eurl, pngs[i]) == 0) {
-			return 1;
-		}
-	}
-
-	if ( eurl != NULL) {
+	if ( eurl != NULL ) {
 		/* Validate the the image has a png signature */
 		U8* buf=(U8*)malloc(sizeof(U8)*PNG_SIG_SIZE);
 		memcpy(buf, p_recv_buf->buf, sizeof(U8)*PNG_SIG_SIZE);
 		if(is_png(buf, sizeof(U8)*PNG_SIG_SIZE)){
-//			printf("Adding PNG: %s\n", eurl);
+			
 			/* save url to log file */
-			size_t url_size = sizeof(char)*(strlen((const char*)eurl));
-			pngs[png_count] = (char*)malloc(url_size);
-			memcpy(pngs[png_count], (const char*)eurl, url_size);
 			png_count++;
 			fprintf(png_log_file, "%s\n", eurl);
 		}else{
-//			printf("Invalid PNG: %s\n", eurl);
+			//			printf("Invalid PNG: %s\n", eurl);
 		}
 		free(buf);
 	}	
@@ -302,9 +271,9 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 	char *ct = NULL;
 	res = curl_easy_getinfo(curl_handle, CURLINFO_CONTENT_TYPE, &ct);
 	if ( res == CURLE_OK && ct != NULL ) {
-//		printf("Content-Type: %s, len=%ld\n", ct, strlen(ct));
+		//		printf("Content-Type: %s, len=%ld\n", ct, strlen(ct));
 	} else {
-//		fprintf(stderr, "Failed obtain Content-Type\n");
+		//		fprintf(stderr, "Failed obtain Content-Type\n");
 		return 2;
 	}
 	if ( strstr(ct, CT_HTML) ) {
@@ -342,6 +311,8 @@ static void init(RECV_BUF* ptr, CURLM *cm, int i)
 	curl_easy_setopt(eh, CURLOPT_MAXREDIRS, 5L);
 	/* supports all built-in encodings */ 
 	curl_easy_setopt(eh, CURLOPT_ACCEPT_ENCODING, "");
+	/* Set additional field to recover which url is being crawled */
+	curl_easy_setopt(eh, CURLOPT_PRIVATE, urls[i]);
 
 	/* Max time in seconds that the connection phase to the server to take */
 	//curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 5L);
