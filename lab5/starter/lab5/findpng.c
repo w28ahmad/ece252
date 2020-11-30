@@ -112,6 +112,8 @@ int main(int argc, char** argv){
 				return_code = msg->data.result;
 				/* Error Code*/
 				if(return_code!=CURLE_OK) {
+					curl_multi_remove_handle( cm, eh );
+					curl_easy_cleanup( eh );
 					continue;
 				}
 
