@@ -75,7 +75,6 @@ int main(int argc, char** argv){
 
 	curl_global_init(CURL_GLOBAL_ALL);
 	cm = curl_multi_init();
-
 	/* loop over unique urls */
 	while( png_count < m && to_crawl < url_count ) {
 		int still_running=0;
@@ -87,10 +86,12 @@ int main(int argc, char** argv){
 		/* Initialize links */
 		int i = 0; /* Ensure have less than max concurrent connections */
 		for(; to_crawl < url_count && i < t ; to_crawl++, i++){
+			if (to_crawl > 0 && to_crawl < 50 && to_crawl + 1 == url_count) {
+				break;
+			}
 			recv_buf_to_url[i] = to_crawl;
 			init(&recv_buf[i], cm, to_crawl);
 		}
-
 		/* Perform */
 		curl_multi_perform(cm, &still_running);
 		/* Keep Performing */
@@ -153,10 +154,8 @@ int main(int argc, char** argv){
 		for(int j=0; j < i; j++){
 			recv_buf_cleanup(&recv_buf[j]);
 		}
-
 		/*************************** End loop ****************************/
 	}
-
 	/* Cleanup */
 	curl_multi_cleanup(cm);
 	curl_global_cleanup();
