@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "utils.c"
 
+#define debug printf("D\n");
 extern int errno;
 
 int get_params(int* t, int* m, char** v, int argc, char** argv);
@@ -40,9 +41,6 @@ int main(int argc, char** argv){
 	if(get_params(&t, &m, &v, argc, argv) < 0){
 		return -1;
 	}
-	if (m == 10 && t == 20) {
-		t = 13;
-	}
 	char url[256];
 	strcpy(url, argv[argc-1]);
 
@@ -62,7 +60,7 @@ int main(int argc, char** argv){
 		logfile = fopen(v, "a");
 	}
 	png_log_file = fopen(PNG_LOGFILE, "a");
-
+	
 	/* Create hashtable */
 	hcreate(HASH_TABLE_SIZE);
 	add_url_to_map(url);
@@ -71,7 +69,7 @@ int main(int argc, char** argv){
 	CURLM *cm = NULL;
 	CURL *eh = NULL;
 	CURLMsg *msg=NULL;
-	RECV_BUF recv_buf[m];
+	RECV_BUF recv_buf[t];
 	CURLcode return_code = (CURLcode)0;
 	int msgs_left=0;
 	int http_status_code;
@@ -89,9 +87,9 @@ int main(int argc, char** argv){
 		/* Initialize links */
 		int i = 0; /* Ensure have less than max concurrent connections */
 		for(; to_crawl < url_count && i < t ; to_crawl++, i++){
-			if (to_crawl > 0 && to_crawl < 50 && to_crawl + 1 == url_count) {
+			/*if (to_crawl > 0 && to_crawl < 50 && to_crawl + 1 == url_count) {
 				break;
-			}
+			}*/
 			recv_buf_to_url[i] = to_crawl;
 			init(&recv_buf[i], cm, to_crawl);
 		}
@@ -107,7 +105,6 @@ int main(int argc, char** argv){
 			}
 			curl_multi_perform(cm, &still_running);
 		} while(still_running);
-		
 		/* Check responses */
 		while ((msg = curl_multi_info_read(cm, &msgs_left))) {
 			if (msg->msg == CURLMSG_DONE) {
